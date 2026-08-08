@@ -1,0 +1,355 @@
+================================================================================
+                    JOBSOUT V2 — YOUR COMPLETE SETUP CHECKLIST
+================================================================================
+
+Follow these steps IN ORDER. Do not skip any step. Each step depends on the
+previous one. Estimated total time: 45-60 minutes.
+
+================================================================================
+STEP 1: CREATE ACCOUNTS (Free Tier Only)
+================================================================================
+
+[ ] 1.1 Supabase Account
+      → Go to https://supabase.com
+      → Sign up with GitHub (fastest) or email
+      → Create a NEW project named "jobscout-v2"
+      → Choose region closest to you (Mumbai/Singapore for India)
+      → Wait for database to provision (2-3 minutes)
+
+[ ] 1.2 Twilio Account
+      → Go to https://www.twilio.com/try-twilio
+      → Sign up with your email
+      → Verify your phone number during signup
+      → You get $15.50 free trial credit
+
+[ ] 1.3 Google AI Studio (Gemini API)
+      → Go to https://aistudio.google.com/app/apikey
+      → Sign in with your Google account
+      → Click "Create API Key"
+      → Copy the key immediately (starts with AIzaSy...)
+      → NOTE: Free tier = 15 requests/min, 1M tokens/day
+
+[ ] 1.4 Render Account
+      → Go to https://render.com
+      → Sign up with GitHub
+      → Verify your email
+
+[ ] 1.5 UptimeRobot Account
+      → Go to https://uptimerobot.com
+      → Sign up with email (free tier)
+      → Verify your email
+
+================================================================================
+STEP 2: GET YOUR CREDENTIALS
+================================================================================
+
+[ ] 2.1 Supabase Credentials
+      → In Supabase Dashboard, go to Project Settings → API
+      → Copy these THREE values:
+        • Project URL  →  SUPABASE_URL
+        • anon public  →  SUPABASE_KEY
+        • service_role secret  →  SUPABASE_SERVICE_KEY (KEEP SECRET!)
+
+[ ] 2.2 Twilio Credentials
+      → In Twilio Console Dashboard
+      → Copy Account SID and Auth Token
+      → Go to Messaging → Try it out → Send a WhatsApp message
+      → Note the sandbox number: +1 415 523 8886
+      → From YOUR phone, send this EXACT message to that number:
+        join <your-sandbox-code>
+      → Wait for "Twilio Sandbox: You are all set!" reply
+
+[ ] 2.3 Your Phone Number
+      → Write your WhatsApp number with country code
+      → Format: +91XXXXXXXXXX (for India)
+      → This goes into USER_WHATSAPP_NUMBER
+
+================================================================================
+STEP 3: SETUP SUPABASE DATABASE
+================================================================================
+
+[ ] 3.1 Run Database Schema
+      → In Supabase, go to SQL Editor → New Query
+      → Open the file: sql/schema.sql (from this project)
+      → COPY the ENTIRE contents
+      → PASTE into the SQL Editor
+      → Click RUN
+      → You should see "Success" message
+
+[ ] 3.2 Create Storage Bucket
+      → In Supabase, go to Storage → New Bucket
+      → Name: resumes
+      → Public: OFF (keep it private)
+      → Click Save
+
+[ ] 3.3 Verify Tables
+      → Go to Table Editor
+      → You should see 4 tables: profiles, jobs, sent_alerts, exam_reminders
+
+================================================================================
+STEP 4: CONFIGURE ENVIRONMENT
+================================================================================
+
+[ ] 4.1 Copy Environment File
+      → In your project folder, run:
+        cp .env.example .env
+
+[ ] 4.2 Fill .env File
+      → Open .env in any text editor
+      → Fill ALL fields with your actual credentials from Step 2
+      → DO NOT share this file with anyone
+      → Example filled .env:
+
+        SUPABASE_URL=https://abcdefgh123456.supabase.co
+        SUPABASE_KEY=eyJhbGciOiJIUzI1NiIs...
+        SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIs...
+        TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+        USER_WHATSAPP_NUMBER=+919876543210
+        GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        GEMINI_MODEL=gemini-1.5-flash
+        APP_ENV=production
+        LOG_LEVEL=INFO
+        SCRAPE_INTERVAL_MINUTES=60
+
+================================================================================
+STEP 5: PUSH CODE TO GITHUB
+================================================================================
+
+[ ] 5.1 Initialize Git
+      → In project root folder, run:
+        git init
+        git add .
+        git commit -m "JobScout v2 initial deployment"
+
+[ ] 5.2 Create GitHub Repo
+      → Go to https://github.com/new
+      → Name: jobscout-v2
+      → Visibility: Private (recommended)
+      → Click Create
+
+[ ] 5.3 Push Code
+      → Run these commands (replace YOUR_USERNAME):
+        git branch -M main
+        git remote add origin https://github.com/YOUR_USERNAME/jobscout-v2.git
+        git push -u origin main
+
+================================================================================
+STEP 6: DEPLOY ON RENDER
+================================================================================
+
+[ ] 6.1 Create Blueprint Instance
+      → In Render Dashboard, click "Blueprints"
+      → Click "New Blueprint Instance"
+      → Connect your GitHub account
+      → Select the "jobscout-v2" repository
+      → Render will detect render.yaml automatically
+
+[ ] 6.2 Add Environment Variables
+      → Render will show 3 services:
+        • jobscout-v2-web (Web Service)
+        • jobscout-v2-scraper (Cron Job - hourly)
+        • jobscout-v2-reminders (Cron Job - daily 8 AM)
+
+      → FOR EACH SERVICE, click into it:
+        • Go to "Environment" tab
+        • Click "Add Environment Variable"
+        • Add ALL variables from your .env file ONE BY ONE
+        • For sync: false vars, manually enter the value
+
+      → Variables to add for ALL 3 services:
+        SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY,
+        TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+        TWILIO_WHATSAPP_NUMBER, USER_WHATSAPP_NUMBER,
+        GEMINI_API_KEY, GEMINI_MODEL,
+        APP_ENV, LOG_LEVEL, SCRAPE_INTERVAL_MINUTES
+
+[ ] 6.3 Deploy
+      → Click "Apply" on the Blueprint
+      → Render builds all 3 services (takes 3-5 minutes)
+      → Wait for all to show "Live" status
+      → Copy your web service URL:
+        https://jobscout-v2-web-xxxx.onrender.com
+
+================================================================================
+STEP 7: CONNECT TWILIO WEBHOOK
+================================================================================
+
+[ ] 7.1 Configure Webhook
+      → Go to Twilio Console
+      → Messaging → Try it out → Send a WhatsApp message
+      → Click "Sandbox Settings"
+      → Find "When a message comes in"
+      → Paste your Render URL + /webhook:
+        https://jobscout-v2-web-xxxx.onrender.com/webhook
+      → Method: POST
+      → Click Save
+
+[ ] 7.2 Test Webhook
+      → From your phone, message the Twilio sandbox number
+      → Send: hello
+      → You should get the welcome message within 5 seconds
+      → If not, check Render logs (Dashboard → Web Service → Logs)
+
+================================================================================
+STEP 8: SETUP UPTIMEROBOT (CRITICAL — DO NOT SKIP)
+================================================================================
+
+[ ] 8.1 Create Monitor
+      → In UptimeRobot Dashboard, click "Add New Monitor"
+      • Monitor Type: HTTP(s)
+      • Friendly Name: JobScout Keep Alive
+      • URL: https://jobscout-v2-web-xxxx.onrender.com/health
+      • Monitoring Interval: Every 5 minutes (300 seconds)
+      • Click "Create Monitor"
+
+[ ] 8.2 Why This Matters
+      → Render free web services SPIN DOWN after 15 min idle
+      → Without UptimeRobot, Twilio webhooks will FAIL
+      → UptimeRobot pings /health every 5 min keeping it alive
+      → This is the ONLY way to make free tier reliable
+
+================================================================================
+STEP 9: COMPLETE ONBOARDING
+================================================================================
+
+[ ] 9.1 Start Onboarding
+      → Message the bot: hello
+      → Follow the prompts:
+        1. Enter your qualification (e.g., B.Tech, BSc, Law, MBA)
+           OR upload your resume PDF
+        2. Select interests (reply with numbers, e.g., 1,3,5)
+        3. Select experience level (1, 2, or 3)
+        4. Confirm with YES
+
+[ ] 9.2 Verify Profile
+      → Send: status
+      → Should show your complete profile
+
+================================================================================
+STEP 10: TEST THE FULL PIPELINE
+================================================================================
+
+[ ] 10.1 Test Commands
+      → Send: help      → Should show all commands
+      → Send: pause     → Should confirm paused
+      → Send: resume    → Should confirm resumed
+      → Send: status    → Should show profile
+      → Send: update    → Should restart onboarding
+
+[ ] 10.2 Test Scraper Manually
+      → In Render Dashboard, go to jobscout-v2-scraper
+      → Click "Run Job" (manual trigger)
+      → Check logs for scrape progress
+      → If jobs match your profile, you get WhatsApp alerts
+
+[ ] 10.3 Verify Database
+      → In Supabase Table Editor, check "jobs" table
+      → Should see new rows after scraper runs
+      → Check "sent_alerts" for alert records
+
+================================================================================
+STEP 11: MONITORING & MAINTENANCE
+================================================================================
+
+[ ] 11.1 Check Logs Regularly
+      → Render Dashboard → each service → Logs tab
+      → Look for errors or warnings
+
+[ ] 11.2 Check Twilio Balance
+      → Twilio Console → Billing → Trial Balance
+      → Free trial gives $15.50 (~3000 messages)
+      → After trial, WhatsApp messages cost ~$0.005 each
+
+[ ] 11.3 Check Gemini Usage
+      → Google AI Studio → API Keys → Usage
+      → Free tier: 15 requests/min, 1M tokens/day
+      → Hourly scraping stays well within limits
+
+[ ] 11.4 Common Issues
+      → No alerts? Check profile status is "active"
+      → Webhook timeout? Check UptimeRobot is active
+      → DB errors? Re-run schema.sql
+      → Gemini errors? Check API key, wait for rate limit reset
+
+================================================================================
+COST BREAKDOWN (Free Tier)
+================================================================================
+
+Service           | Cost    | Notes
+------------------|---------|------------------------------------------
+Render Web        | $0      | Free tier (with UptimeRobot keep-alive)
+Render Cron       | $0      | Free tier (2 cron jobs)
+Supabase DB       | $0      | 500MB limit, 1GB storage
+Supabase Storage  | $0      | 1GB limit (resumes)
+Twilio Sandbox    | $0      | Free trial, then ~$0.005/msg
+Gemini API        | $0      | 15 RPM, 1M tokens/day free
+UptimeRobot       | $0      | Free tier (50 monitors)
+------------------|---------|------------------------------------------
+TOTAL             | $0      | Completely free for personal use
+
+After Twilio trial: ~$3-5/month for ~600-1000 messages
+
+================================================================================
+TROUBLESHOOTING QUICK FIXES
+================================================================================
+
+Problem: "Webhook not responding"
+Fix: Check UptimeRobot monitor is green. Check Render service is "Live".
+
+Problem: "No job alerts after hours"
+Fix: Check cron job logs. Check profile status = active. Check interests match.
+
+Problem: "Twilio says 'not a valid WhatsApp number'"
+Fix: Ensure USER_WHATSAPP_NUMBER has +91 country code. No spaces.
+
+Problem: "Database connection error"
+Fix: Check SUPABASE_SERVICE_KEY (not anon key). Re-run schema.sql.
+
+Problem: "Gemini rate limit exceeded"
+Fix: Wait 1 minute. Reduce scrape frequency to 2 hours in render.yaml.
+
+Problem: "Resume upload failed"
+Fix: Check "resumes" bucket exists in Supabase Storage. Check permissions.
+
+================================================================================
+UPGRADE PATH (When You're Ready)
+================================================================================
+
+1. Twilio Approved Sender
+   → Apply at https://www.twilio.com/docs/whatsapp/self-sign-up
+   → Removes 24-hour sandbox session limit
+   → Required for production use
+
+2. Render Starter Plan ($7/month)
+   → Removes spin-down issue (no UptimeRobot needed)
+   → Faster builds, more resources
+   → Better reliability
+
+3. Gemini Pro Model
+   → Change GEMINI_MODEL to "gemini-1.5-pro"
+   → Better extraction accuracy
+   → Still has generous free tier
+
+4. Add More Sources
+   → Edit app/scraper.py
+   → Add new scraper class
+   → Add to get_all_scrapers()
+   → No other changes needed
+
+================================================================================
+CONGRATULATIONS! You're done.
+================================================================================
+
+If you followed every step, your JobScout bot is now live and monitoring
+government job portals 24/7. You'll never miss a sarkari naukri again.
+
+For questions or issues, check:
+• Render Logs (first place to look)
+• Twilio Message Logs (delivery status)
+• Supabase Table Editor (data verification)
+• features.md (full feature list)
+• fullartitecture.md (technical deep dive)
+
+Happy job hunting! 🚀

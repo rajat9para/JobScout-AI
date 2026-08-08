@@ -1,0 +1,28 @@
+# JobScout v2 — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Web Framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
+# Database & Storage
+supabase>=2.5.0
+
+# Twilio WhatsApp
+twilio>=9.0.0
+
+# AI — Google Gemini (Free Tier)
+google-generativeai>=0.7.0
+
+# Scraping
+requests>=2.32.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+
+# Configuration
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# Utilities
+python-dotenv>=1.0.0
