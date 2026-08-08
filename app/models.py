@@ -1,39 +1,26 @@
 """Pydantic models for type safety, validation, and serialization."""
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from enum import Enum
 
 
-class OnboardingState(str, Enum):
-    """Finite states for the onboarding conversation state machine."""
-    WELCOME = "welcome"
-    QUALIFICATION = "qualification"
-    INTERESTS = "interests"
-    EXPERIENCE = "experience"
-    CONFIRMATION = "confirmation"
-    COMPLETE = "complete"
-
-
-class AlertMode(str, Enum):
-    """How the user wants to receive alerts."""
-    INSTANT = "instant"      # Send immediately when found
-    DIGEST = "digest"        # Daily summary at 9 AM
-    PAUSED = "paused"        # No alerts
+class ProfileStatus(str, Enum):
+    """Whether the user is receiving alerts."""
+    ACTIVE = "active"
+    PAUSED = "paused"
 
 
 class Profile(BaseModel):
     """User profile stored in Supabase."""
     id: Optional[str] = None
-    whatsapp_number: str
+    email: Optional[str] = None
     qualification: Optional[str] = None
     interests: Optional[List[str]] = None
     experience_level: Optional[str] = None
     resume_url: Optional[str] = None
     resume_parsed_text: Optional[str] = None
-    status: str = "active"           # active | paused
-    alert_mode: str = AlertMode.INSTANT.value
-    onboarding_state: str = OnboardingState.WELCOME.value
+    status: str = ProfileStatus.ACTIVE.value  # active | paused
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -47,8 +34,8 @@ class Profile(BaseModel):
             return v
         if isinstance(v, str):
             # Handle PostgreSQL array format: {a,b,c}
-            v = v.strip("{}"")
-            return [x.strip().strip(""") for x in v.split(",") if x.strip()]
+            v = v.strip("{}")
+            return [x.strip().strip('"') for x in v.split(",") if x.strip()]
         return v
 
 
@@ -77,8 +64,8 @@ class Job(BaseModel):
         if isinstance(v, list):
             return v
         if isinstance(v, str):
-            v = v.strip("{}"")
-            return [x.strip().strip(""") for x in v.split(",") if x.strip()]
+            v = v.strip("{}")
+            return [x.strip().strip('"') for x in v.split(",") if x.strip()]
         return v
 
 
@@ -95,3 +82,12 @@ class ExamReminder(BaseModel):
     job_id: str
     reminder_type: str  # "3_days" | "1_day" | "today"
     sent_at: Optional[datetime] = None
+
+
+class DigestEntry(BaseModel):
+    """Tracks jobs queued for the nightly PDF digest."""
+    id: Optional[str] = None
+    job_id: str
+    digest_date: Optional[date] = None
+    sent: bool = False
+    created_at: Optional[datetime] = None

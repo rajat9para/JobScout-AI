@@ -38,7 +38,7 @@ class JobMatcher:
 
     def match(self, profile: Profile, job: Job) -> bool:
         """Returns True if job matches profile. All applicable checks must pass."""
-        if profile.status != "active" and profile.alert_mode == "paused":
+        if profile.status != "active":
             return False
 
         checks = [

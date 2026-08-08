@@ -1,9 +1,10 @@
 ================================================================================
-                    JOBSOUT V2 — YOUR COMPLETE SETUP CHECKLIST
+                    JOBSCOUT V2.1 — YOUR COMPLETE SETUP CHECKLIST
+                         (Email Digest Edition — Brevo + PDF)
 ================================================================================
 
 Follow these steps IN ORDER. Do not skip any step. Each step depends on the
-previous one. Estimated total time: 45-60 minutes.
+previous one. Estimated total time: 30-40 minutes.
 
 ================================================================================
 STEP 1: CREATE ACCOUNTS (Free Tier Only)
@@ -16,11 +17,14 @@ STEP 1: CREATE ACCOUNTS (Free Tier Only)
       → Choose region closest to you (Mumbai/Singapore for India)
       → Wait for database to provision (2-3 minutes)
 
-[ ] 1.2 Twilio Account
-      → Go to https://www.twilio.com/try-twilio
-      → Sign up with your email
-      → Verify your phone number during signup
-      → You get $15.50 free trial credit
+[ ] 1.2 Brevo (Sendinblue) Account
+      → Go to https://www.brevo.com
+      → Sign up with your email (free plan)
+      → Verify your email address
+      → Free tier: 300 emails/day, 9000 emails/month
+      → Go to Settings → SMTP & API → API Keys
+      → Click "Generate a new API key"
+      → Copy the key (starts with xkeysib-...)
 
 [ ] 1.3 Google AI Studio (Gemini API)
       → Go to https://aistudio.google.com/app/apikey
@@ -50,19 +54,16 @@ STEP 2: GET YOUR CREDENTIALS
         • anon public  →  SUPABASE_KEY
         • service_role secret  →  SUPABASE_SERVICE_KEY (KEEP SECRET!)
 
-[ ] 2.2 Twilio Credentials
-      → In Twilio Console Dashboard
-      → Copy Account SID and Auth Token
-      → Go to Messaging → Try it out → Send a WhatsApp message
-      → Note the sandbox number: +1 415 523 8886
-      → From YOUR phone, send this EXACT message to that number:
-        join <your-sandbox-code>
-      → Wait for "Twilio Sandbox: You are all set!" reply
+[ ] 2.2 Brevo Credentials
+      → In Brevo Dashboard → Settings → SMTP & API → API Keys
+      → Copy your API key → BREVO_API_KEY
+      → Add & verify a sender email in Brevo → SENDER_EMAIL
+        (Go to: Settings → Senders, Domains & Dedicated IPs → Add a sender)
+      → Decide your sender name → SENDER_NAME (e.g., "JobScout Bot")
 
-[ ] 2.3 Your Phone Number
-      → Write your WhatsApp number with country code
-      → Format: +91XXXXXXXXXX (for India)
-      → This goes into USER_WHATSAPP_NUMBER
+[ ] 2.3 Your Email Address
+      → The email where you want to receive the nightly PDF digest
+      → This goes into USER_EMAIL
 
 ================================================================================
 STEP 3: SETUP SUPABASE DATABASE
@@ -76,7 +77,7 @@ STEP 3: SETUP SUPABASE DATABASE
       → Click RUN
       → You should see "Success" message
 
-[ ] 3.2 Create Storage Bucket
+[ ] 3.2 Create Storage Bucket (optional, for resumes)
       → In Supabase, go to Storage → New Bucket
       → Name: resumes
       → Public: OFF (keep it private)
@@ -84,7 +85,8 @@ STEP 3: SETUP SUPABASE DATABASE
 
 [ ] 3.3 Verify Tables
       → Go to Table Editor
-      → You should see 4 tables: profiles, jobs, sent_alerts, exam_reminders
+      → You should see 5 tables: profiles, jobs, sent_alerts,
+        exam_reminders, daily_digest
 
 ================================================================================
 STEP 4: CONFIGURE ENVIRONMENT
@@ -103,10 +105,10 @@ STEP 4: CONFIGURE ENVIRONMENT
         SUPABASE_URL=https://abcdefgh123456.supabase.co
         SUPABASE_KEY=eyJhbGciOiJIUzI1NiIs...
         SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIs...
-        TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-        USER_WHATSAPP_NUMBER=+919876543210
+        BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxx
+        SENDER_EMAIL=alerts@yourdomain.com
+        SENDER_NAME=JobScout Bot
+        USER_EMAIL=rajat@gmail.com
         GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         GEMINI_MODEL=gemini-1.5-flash
         APP_ENV=production
@@ -121,7 +123,7 @@ STEP 5: PUSH CODE TO GITHUB
       → In project root folder, run:
         git init
         git add .
-        git commit -m "JobScout v2 initial deployment"
+        git commit -m "JobScout v2.1 email digest edition"
 
 [ ] 5.2 Create GitHub Repo
       → Go to https://github.com/new
@@ -147,10 +149,11 @@ STEP 6: DEPLOY ON RENDER
       → Render will detect render.yaml automatically
 
 [ ] 6.2 Add Environment Variables
-      → Render will show 3 services:
+      → Render will show 4 services:
         • jobscout-v2-web (Web Service)
         • jobscout-v2-scraper (Cron Job - hourly)
-        • jobscout-v2-reminders (Cron Job - daily 8 AM)
+        • jobscout-v2-nightly-digest (Cron Job - 10 PM IST)
+        • jobscout-v2-reminders (Cron Job - 8 AM IST)
 
       → FOR EACH SERVICE, click into it:
         • Go to "Environment" tab
@@ -158,39 +161,35 @@ STEP 6: DEPLOY ON RENDER
         • Add ALL variables from your .env file ONE BY ONE
         • For sync: false vars, manually enter the value
 
-      → Variables to add for ALL 3 services:
+      → Variables to add for ALL 4 services:
         SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY,
-        TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
-        TWILIO_WHATSAPP_NUMBER, USER_WHATSAPP_NUMBER,
-        GEMINI_API_KEY, GEMINI_MODEL,
+        BREVO_API_KEY, SENDER_EMAIL, SENDER_NAME,
+        USER_EMAIL, GEMINI_API_KEY, GEMINI_MODEL,
         APP_ENV, LOG_LEVEL, SCRAPE_INTERVAL_MINUTES
 
 [ ] 6.3 Deploy
       → Click "Apply" on the Blueprint
-      → Render builds all 3 services (takes 3-5 minutes)
+      → Render builds all 4 services (takes 3-5 minutes)
       → Wait for all to show "Live" status
       → Copy your web service URL:
         https://jobscout-v2-web-xxxx.onrender.com
 
 ================================================================================
-STEP 7: CONNECT TWILIO WEBHOOK
+STEP 7: SETUP YOUR PROFILE
 ================================================================================
 
-[ ] 7.1 Configure Webhook
-      → Go to Twilio Console
-      → Messaging → Try it out → Send a WhatsApp message
-      → Click "Sandbox Settings"
-      → Find "When a message comes in"
-      → Paste your Render URL + /webhook:
-        https://jobscout-v2-web-xxxx.onrender.com/webhook
-      → Method: POST
-      → Click Save
+[ ] 7.1 Open Profile Setup
+      → Go to: https://jobscout-v2-web-xxxx.onrender.com/setup
+      → Fill in the form:
+        1. Email (your email for receiving digests)
+        2. Qualification (e.g., B.Tech, BSc, Law, MBA)
+        3. Select interest sectors (PSU, Banking, Railways, etc.)
+        4. Select experience level
+        5. Click "Save Profile"
 
-[ ] 7.2 Test Webhook
-      → From your phone, message the Twilio sandbox number
-      → Send: hello
-      → You should get the welcome message within 5 seconds
-      → If not, check Render logs (Dashboard → Web Service → Logs)
+[ ] 7.2 Verify Profile
+      → Go to: https://jobscout-v2-web-xxxx.onrender.com/profile
+      → Should show your complete profile as JSON
 
 ================================================================================
 STEP 8: SETUP UPTIMEROBOT (CRITICAL — DO NOT SKIP)
@@ -206,70 +205,59 @@ STEP 8: SETUP UPTIMEROBOT (CRITICAL — DO NOT SKIP)
 
 [ ] 8.2 Why This Matters
       → Render free web services SPIN DOWN after 15 min idle
-      → Without UptimeRobot, Twilio webhooks will FAIL
+      → Without UptimeRobot, the web service sleeps
       → UptimeRobot pings /health every 5 min keeping it alive
       → This is the ONLY way to make free tier reliable
 
 ================================================================================
-STEP 9: COMPLETE ONBOARDING
+STEP 9: TEST THE FULL PIPELINE
 ================================================================================
 
-[ ] 9.1 Start Onboarding
-      → Message the bot: hello
-      → Follow the prompts:
-        1. Enter your qualification (e.g., B.Tech, BSc, Law, MBA)
-           OR upload your resume PDF
-        2. Select interests (reply with numbers, e.g., 1,3,5)
-        3. Select experience level (1, 2, or 3)
-        4. Confirm with YES
+[ ] 9.1 Test Web Endpoints
+      → Visit /health     → Should show {"status": "healthy"}
+      → Visit /setup      → Should show profile form
+      → Visit /profile    → Should show your saved profile
+      → Visit /digest-status → Should show pending digest count
 
-[ ] 9.2 Verify Profile
-      → Send: status
-      → Should show your complete profile
-
-================================================================================
-STEP 10: TEST THE FULL PIPELINE
-================================================================================
-
-[ ] 10.1 Test Commands
-      → Send: help      → Should show all commands
-      → Send: pause     → Should confirm paused
-      → Send: resume    → Should confirm resumed
-      → Send: status    → Should show profile
-      → Send: update    → Should restart onboarding
-
-[ ] 10.2 Test Scraper Manually
+[ ] 9.2 Test Scraper Manually
       → In Render Dashboard, go to jobscout-v2-scraper
       → Click "Run Job" (manual trigger)
       → Check logs for scrape progress
-      → If jobs match your profile, you get WhatsApp alerts
+      → If jobs match your profile, they'll queue for tonight's digest
 
-[ ] 10.3 Verify Database
-      → In Supabase Table Editor, check "jobs" table
-      → Should see new rows after scraper runs
-      → Check "sent_alerts" for alert records
+[ ] 9.3 Test Digest Manually
+      → Visit: https://jobscout-v2-web-xxxx.onrender.com/trigger-digest
+      → This sends a PDF digest email immediately
+      → Check your email inbox (and spam folder)
+      → You should receive a PDF with matched jobs
+
+[ ] 9.4 Verify Database
+      → In Supabase Table Editor, check "jobs" table for scraped jobs
+      → Check "daily_digest" for queued jobs
+      → Check "sent_alerts" for processed records
 
 ================================================================================
-STEP 11: MONITORING & MAINTENANCE
+STEP 10: MONITORING & MAINTENANCE
 ================================================================================
 
-[ ] 11.1 Check Logs Regularly
+[ ] 10.1 Check Logs Regularly
       → Render Dashboard → each service → Logs tab
       → Look for errors or warnings
 
-[ ] 11.2 Check Twilio Balance
-      → Twilio Console → Billing → Trial Balance
-      → Free trial gives $15.50 (~3000 messages)
-      → After trial, WhatsApp messages cost ~$0.005 each
+[ ] 10.2 Check Brevo Dashboard
+      → Brevo → Transactional → Email Logs
+      → Verify emails are being delivered
+      → Check daily sending quota (300/day free)
 
-[ ] 11.3 Check Gemini Usage
+[ ] 10.3 Check Gemini Usage
       → Google AI Studio → API Keys → Usage
       → Free tier: 15 requests/min, 1M tokens/day
       → Hourly scraping stays well within limits
 
-[ ] 11.4 Common Issues
-      → No alerts? Check profile status is "active"
-      → Webhook timeout? Check UptimeRobot is active
+[ ] 10.4 Common Issues
+      → No digest email? Check Brevo API key, sender verification
+      → Emails in spam? Add sender to contacts, check DKIM setup
+      → No jobs in digest? Check profile interests, scraper logs
       → DB errors? Re-run schema.sql
       → Gemini errors? Check API key, wait for rate limit reset
 
@@ -280,29 +268,28 @@ COST BREAKDOWN (Free Tier)
 Service           | Cost    | Notes
 ------------------|---------|------------------------------------------
 Render Web        | $0      | Free tier (with UptimeRobot keep-alive)
-Render Cron       | $0      | Free tier (2 cron jobs)
+Render Cron x3    | $0      | Free tier (3 cron jobs)
 Supabase DB       | $0      | 500MB limit, 1GB storage
-Supabase Storage  | $0      | 1GB limit (resumes)
-Twilio Sandbox    | $0      | Free trial, then ~$0.005/msg
+Brevo Email       | $0      | 300 emails/day, 9000/month free
 Gemini API        | $0      | 15 RPM, 1M tokens/day free
 UptimeRobot       | $0      | Free tier (50 monitors)
 ------------------|---------|------------------------------------------
 TOTAL             | $0      | Completely free for personal use
 
-After Twilio trial: ~$3-5/month for ~600-1000 messages
-
 ================================================================================
 TROUBLESHOOTING QUICK FIXES
 ================================================================================
 
-Problem: "Webhook not responding"
-Fix: Check UptimeRobot monitor is green. Check Render service is "Live".
+Problem: "No digest email received"
+Fix: Check Brevo API key is valid. Check sender email is verified in Brevo.
+     Check spam/junk folder. Try /trigger-digest endpoint.
 
-Problem: "No job alerts after hours"
-Fix: Check cron job logs. Check profile status = active. Check interests match.
+Problem: "Brevo says 'sender not verified'"
+Fix: Go to Brevo → Settings → Senders → Add & verify your sender email.
 
-Problem: "Twilio says 'not a valid WhatsApp number'"
-Fix: Ensure USER_WHATSAPP_NUMBER has +91 country code. No spaces.
+Problem: "Empty PDF every night"
+Fix: Check profile interests match available jobs. Try BULK mode by
+     widening interests. Check scraper logs for extraction issues.
 
 Problem: "Database connection error"
 Fix: Check SUPABASE_SERVICE_KEY (not anon key). Re-run schema.sql.
@@ -310,17 +297,17 @@ Fix: Check SUPABASE_SERVICE_KEY (not anon key). Re-run schema.sql.
 Problem: "Gemini rate limit exceeded"
 Fix: Wait 1 minute. Reduce scrape frequency to 2 hours in render.yaml.
 
-Problem: "Resume upload failed"
-Fix: Check "resumes" bucket exists in Supabase Storage. Check permissions.
+Problem: "PDF generation error"
+Fix: Check reportlab is installed. Check logs for specific error.
 
 ================================================================================
 UPGRADE PATH (When You're Ready)
 ================================================================================
 
-1. Twilio Approved Sender
-   → Apply at https://www.twilio.com/docs/whatsapp/self-sign-up
-   → Removes 24-hour sandbox session limit
-   → Required for production use
+1. Brevo Paid Plan ($9/month)
+   → 20,000 emails/month
+   → Custom domain for better deliverability
+   → Advanced analytics
 
 2. Render Starter Plan ($7/month)
    → Removes spin-down issue (no UptimeRobot needed)
@@ -343,11 +330,12 @@ CONGRATULATIONS! You're done.
 ================================================================================
 
 If you followed every step, your JobScout bot is now live and monitoring
-government job portals 24/7. You'll never miss a sarkari naukri again.
+government job portals 24/7. Every night at 10 PM IST, you'll receive
+a professional PDF digest with all matching jobs — right in your inbox.
 
 For questions or issues, check:
 • Render Logs (first place to look)
-• Twilio Message Logs (delivery status)
+• Brevo Email Logs (delivery status)
 • Supabase Table Editor (data verification)
 • features.md (full feature list)
 • fullartitecture.md (technical deep dive)

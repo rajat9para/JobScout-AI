@@ -1,2 +1,2 @@
-"""JobScout v2 — Personal Sarkari Naukri Alert Bot (Gemini Edition)"""
-__version__ = "2.0.0"
+"""JobScout v2.1 — Personal Sarkari Naukri Alert Bot (Email Digest Edition)"""
+__version__ = "2.1.0"

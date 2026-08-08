@@ -1,17 +1,19 @@
-# JobScout v2 — Full Architecture Document
+# JobScout v2.1 — Full Architecture Document
 
 > **Project:** Personal Sarkari Naukri Job Alert Bot  
-> **Version:** 2.0.0  
-> **Stack:** Python, FastAPI, Supabase, Twilio, Google Gemini, Render  
-> **Scope:** Government job monitoring with AI-powered extraction and WhatsApp delivery
+> **Version:** 2.1.0  
+> **Stack:** Python, FastAPI, Supabase, Brevo, ReportLab, Google Gemini, Render  
+> **Scope:** Government job monitoring with AI-powered extraction and nightly PDF email digest
 
 ---
 
 ## 1. Executive Summary
 
-JobScout is an autonomous WhatsApp bot that monitors 4 major Indian government job portals 24/7, extracts structured job data using Google's Gemini AI, matches postings against a user-defined profile, and delivers personalized alerts directly to WhatsApp. The entire system runs on free-tier cloud infrastructure with zero operational cost.
+JobScout is an autonomous job monitoring system that watches 4 major Indian government job portals 24/7, extracts structured job data using Google's Gemini AI, matches postings against a user-defined profile, and delivers a comprehensive **nightly PDF digest** via email using Brevo's free transactional email service. The entire system runs on free-tier cloud infrastructure with zero operational cost.
 
 **Key Innovation:** Instead of brittle CSS selectors that break when websites redesign, JobScout uses Large Language Model (LLM) extraction. Raw HTML text is passed to Gemini, which reliably parses unstructured job notices into structured data regardless of layout changes.
+
+**v2.1 Change:** Replaced Twilio WhatsApp alerts with a nightly PDF email digest. All matched jobs from the day are collected, formatted into a professional PDF, and emailed at 10 PM IST — giving you a single, comprehensive document instead of scattered messages.
 
 ---
 
@@ -28,7 +30,7 @@ These portals use inconsistent formats: HTML tables, PDF notices, dynamic JavaSc
 - **Error-prone** (easy to miss deadlines)
 - **Inefficient** (most postings are irrelevant to the user's qualification)
 
-**Solution:** An intelligent bot that filters noise and delivers only relevant, actionable alerts.
+**Solution:** An intelligent bot that filters noise and delivers only relevant, actionable alerts — consolidated into one PDF every night.
 
 ---
 
@@ -38,20 +40,20 @@ These portals use inconsistent formats: HTML tables, PDF notices, dynamic JavaSc
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              USER (WhatsApp)                                │
+│                              USER (Email Inbox)                             │
 │                         ┌─────────────────────┐                             │
-│                         │  Sends "hello"      │                             │
-│                         │  Sends commands     │                             │
-│                         │  Receives alerts    │                             │
+│                         │  Receives PDF digest │                             │
+│                         │  at 10 PM IST daily  │                             │
+│                         │  Deadline reminders  │                             │
 │                         └──────────┬──────────┘                             │
 └────────────────────────────────────┼────────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           TWILIO WHATSAPP API                               │
-│  • Receives inbound messages (webhook POST)                                 │
-│  • Sends outbound alerts (programmatic API)                                 │
-│  • Free sandbox for development → approved sender for production              │
+│                        BREVO TRANSACTIONAL EMAIL API                        │
+│  • Sends nightly PDF digest (with attachment)                               │
+│  • Sends deadline reminder emails (HTML)                                    │
+│  • Free tier: 300 emails/day, 9000/month                                   │
 └────────────────────────────────────┼────────────────────────────────────────┘
                                      │
               ┌──────────────────────┴──────────────────────┐
@@ -63,117 +65,110 @@ These portals use inconsistent formats: HTML tables, PDF notices, dynamic JavaSc
 │   Always-on, port $PORT     │              │  ┌─────────────────────┐    │
 │                             │              │  │ Scraper Job         │    │
 │  ┌─────────────────────┐    │              │  │ Runs: Every hour    │    │
-│  │ /webhook            │◄───┼──────────────┤  │ Pipeline:           │    │
-│  │ Handles onboarding  │    │              │  │ 1. Scrape 4 sources │    │
-│  │ & user commands     │    │              │  │ 2. Gemini extract   │    │
-│  └─────────────────────┘    │              │  │ 3. Deduplicate      │    │
-│                             │              │  │ 4. Match vs profile │    │
-│  ┌─────────────────────┐    │              │  │ 5. Send WhatsApp    │    │
-│  │ /health             │◄───┼── UptimeRobot│  └─────────────────────┘    │
-│  │ Keep-alive ping     │    │  (5 min)     │                             │
-│  └─────────────────────┘    │              │  ┌─────────────────────┐    │
-│                             │              │  │ Reminder Job        │    │
-│  ┌─────────────────────┐    │              │  │ Runs: Daily 8 AM    │    │
-│  │ /profile (debug)    │    │              │  │ Checks deadlines    │    │
-│  └─────────────────────┘    │              │  │ Sends 3/1/0-day     │    │
-│                             │              │  │ deadline reminders  │    │
-└─────────────────────────────┘              │  └─────────────────────┘    │
-              │                              └─────────────────────────────┘
-              │                                             │
-              │ reads/writes                                │ reads/writes
-              │                                             │
-              ▼                                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         SUPABASE (PostgreSQL + Storage)                     │
-│                                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │ profiles     │  │ jobs         │  │ sent_alerts  │  │ exam_remind..│   │
-│  │ ───────────  │  │ ───────────  │  │ ───────────  │  │ ───────────  │   │
-│  │ id (UUID)    │  │ id (UUID)    │  │ id (UUID)    │  │ id (UUID)    │   │
-│  │ whatsapp_no  │  │ source       │  │ job_id (FK)  │  │ job_id (FK)  │   │
-│  │ qualification│  │ title        │  │ sent_at      │  │ reminder_type│   │
-│  │ interests[]  │  │ organization │  └──────────────┘  │ sent_at      │   │
-│  │ experience   │  │ eligibility  │                    └──────────────┘   │
-│  │ status       │  │ degree_tags[]│                                             │
-│  │ alert_mode   │  │ salary       │  ┌──────────────┐                        │
-│  │ resume_url   │  │ exam_required│  │ Storage      │                        │
-│  └──────────────┘  │ last_date    │  │ ───────────  │                        │
-│                    │ apply_link   │  │ resumes/     │                        │
-│                    │ raw_hash     │  │   user/      │                        │
-│                    │ raw_text     │  │   resume.pdf │                        │
-│                    └──────────────┘  └──────────────┘                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+│  │ /setup              │    │              │  │ Pipeline:           │    │
+│  │ Profile setup form  │    │              │  │ 1. Scrape 4 sources │    │
+│  └─────────────────────┘    │              │  │ 2. Gemini extract   │    │
+│                             │              │  │ 3. Deduplicate      │    │
+│  ┌─────────────────────┐    │              │  │ 4. Match vs profile │    │
+│  │ /health             │◄───┼── UptimeRobot│  │ 5. Queue to digest  │    │
+│  │ Keep-alive ping     │    │  (5 min)     │  └─────────────────────┘    │
+│  └─────────────────────┘    │              │                             │
+│                             │              │  ┌─────────────────────┐    │
+│  ┌─────────────────────┐    │              │  │ Nightly Digest      │    │
+│  │ /profile (debug)    │    │              │  │ Runs: 10 PM IST     │    │
+│  │ /digest-status      │    │              │  │ 1. Fetch queue      │    │
+│  │ /trigger-digest     │    │              │  │ 2. Generate PDF     │    │
+│  └─────────────────────┘    │              │  │ 3. Email via Brevo  │    │
+│                             │              │  └─────────────────────┘    │
+└─────────────────────────────┘              │                             │
+              │                              │  ┌─────────────────────┐    │
+              │                              │  │ Reminder Job        │    │
+              │ reads/writes                 │  │ Runs: Daily 8 AM    │    │
+              │                              │  │ Checks deadlines    │    │
+              │                              │  │ Sends email alerts  │    │
+              ▼                              │  └─────────────────────┘    │
+┌────────────────────────────┐               └─────────────────────────────┘
+│  SUPABASE (PostgreSQL)     │                             │
+│                            │                  reads/writes│
+│  ┌────────────┐ ┌────────┐ │◄────────────────────────────┘
+│  │ profiles   │ │ jobs   │ │
+│  │ ────────── │ │ ────── │ │
+│  │ email      │ │ source │ │  ┌──────────────┐
+│  │ qualific.  │ │ title  │ │  │ daily_digest │
+│  │ interests[]│ │ org    │ │  │ ──────────── │
+│  │ experience │ │ salary │ │  │ job_id (FK)  │
+│  │ status     │ │ exam   │ │  │ digest_date  │
+│  └────────────┘ │ last_dt│ │  │ sent (bool)  │
+│                 │ hash   │ │  └──────────────┘
+│                 └────────┘ │
+│  ┌────────────┐ ┌────────┐ │
+│  │sent_alerts │ │exam_rem│ │
+│  └────────────┘ └────────┘ │
+└────────────────────────────┘
 ```
 
 ### 3.2 Component Breakdown
 
-#### A. Twilio WhatsApp API
-- **Inbound:** Webhook POST to `/webhook` on every user message
-- **Outbound:** Programmatic message creation via Twilio REST API
-- **Media:** Supports PDF resume uploads via `MediaUrl0` parameter
-- **Sandbox:** Free tier with 24-hour session window (sufficient for personal use)
+#### A. Brevo Transactional Email API
+- **Digest:** Nightly email with PDF attachment at 10 PM IST
+- **Reminders:** HTML emails for deadline alerts (3 days, 1 day, today)
+- **Free tier:** 300 emails/day, 9000/month — ample for single-user
+- **Retry:** 3 attempts with exponential backoff on API errors
 
 #### B. Render Web Service (FastAPI)
 - **Runtime:** Python 3.11 + Uvicorn ASGI server
 - **Endpoints:**
-  - `POST /webhook` — Main Twilio webhook handler
-  - `GET /health` — Health check for UptimeRobot + monitoring
-  - `GET /profile` — Debug endpoint to inspect current profile
+  - `GET /setup` — Profile setup web form
+  - `POST /setup` — Save profile to database
+  - `GET /health` — Health check for UptimeRobot
+  - `GET /profile` — Debug endpoint to view profile JSON
+  - `GET /digest-status` — Check pending digest job count
+  - `GET /trigger-digest` — Manual digest trigger for testing
 - **State Management:** Stateless — all state persisted in Supabase
-- **Keep-Alive:** UptimeRobot pings `/health` every 5 minutes to prevent Render free-tier spin-down
+- **Keep-Alive:** UptimeRobot pings `/health` every 5 minutes
 
 #### C. Render Cron Jobs
 - **Job 1 — Scraper:** Runs hourly (`0 * * * *`)
-  - Orchestrates the full pipeline
+  - Orchestrates the full scrape → extract → match pipeline
+  - Matched jobs queued into `daily_digest` table
   - Isolated per-source error handling
-  - Logs all operations for debugging
-- **Job 2 — Reminders:** Runs daily at 8 AM (`0 8 * * *`)
-  - Queries jobs with `last_date` = today+3, today+1, today
-  - Sends deadline reminder WhatsApp messages
-  - Prevents duplicate reminders via `exam_reminders` table
+- **Job 2 — Nightly Digest:** Runs at 10 PM IST (`30 16 * * *` UTC)
+  - Fetches pending digest entries
+  - Generates professional PDF via ReportLab
+  - Emails PDF via Brevo
+  - Marks entries as sent
+- **Job 3 — Reminders:** Runs daily at 8 AM IST (`30 2 * * *` UTC)
+  - Queries jobs with approaching deadlines
+  - Sends reminder emails for matched jobs
 
 #### D. Supabase (Backend)
-- **PostgreSQL:** 4 tables with indexes, RLS policies, auto-update triggers
-- **Storage:** Private bucket for resume PDFs
-- **Connection:** Service role key for admin operations (bypasses RLS in v1)
+- **PostgreSQL:** 5 tables with indexes, RLS policies, auto-update triggers
+- **New Table:** `daily_digest` — queues matched jobs for nightly PDF
+- **Connection:** Service role key for admin operations
 
 ---
 
 ## 4. Data Flow
 
-### 4.1 Onboarding Flow
+### 4.1 Profile Setup Flow
 
 ```
-User sends "hello"
+User visits /setup
     │
     ▼
-Twilio webhook → POST /webhook
+FastAPI serves HTML form
     │
     ▼
-FastAPI receives message
+User fills: email, qualification, interests, experience
     │
     ▼
-Check if profile exists in Supabase
-    │
-    ├── No  → Create new profile (state = "welcome")
-    │
-    └── Yes → Check onboarding_state
-                │
-                ├── "welcome"        → Send welcome, ask qualification
-                ├── "qualification"  → Save degree OR parse resume
-                ├── "interests"      → Save sector preferences
-                ├── "experience"     → Save experience level
-                ├── "confirmation"   → Show summary, wait for YES/NO
-                └── "complete"       → Handle commands or default reply
+POST /setup → Upsert profile in Supabase
     │
     ▼
-Build TwiML response → Return XML to Twilio
-    │
-    ▼
-Twilio delivers message to user's WhatsApp
+Success page with profile summary
 ```
 
-### 4.2 Job Alert Pipeline (Cron Job)
+### 4.2 Job Alert Pipeline (Hourly Cron)
 
 ```
 Cron trigger (every hour)
@@ -207,17 +202,55 @@ For each extracted job:
     └── Experience match (Fresher-friendly detection)
     │
     ▼
-    If matched AND not already alerted:
+    If matched:
     │
-    ├── Format short alert message
-    ├── Send via Twilio WhatsApp API
-    └── Record in sent_alerts table
+    └── Insert into daily_digest table
+        (will be included in tonight's PDF email)
 ```
 
-### 4.3 Exam Reminder Flow
+### 4.3 Nightly PDF Digest Flow
 
 ```
-Daily at 8 AM
+Nightly at 10 PM IST
+    │
+    ▼
+Fetch user profile from Supabase
+    │
+    ├── Not found or paused → Skip
+    │
+    ▼
+Query daily_digest WHERE date = TODAY AND sent = FALSE
+    │
+    ▼
+Join with jobs table for full details
+    │
+    ▼
+Generate PDF with ReportLab:
+    │
+    ├── Header: title, date, job count
+    ├── Summary: stats bar (jobs, sources, deadlines)
+    ├── For each job: medium-length description card
+    │   ├── Title, Org, Eligibility, Salary
+    │   ├── Vacancies, Exam, Last Date (urgency)
+    │   ├── Apply Link, Source, Degree Tags
+    │   └── Divider between jobs
+    └── Footer: page numbers, generation timestamp
+    │
+    ▼
+Send email via Brevo:
+    │
+    ├── HTML body with summary
+    ├── PDF attachment
+    └── 3 retries with exponential backoff
+    │
+    ▼
+Mark digest entries as sent in database
+```
+
+### 4.4 Exam Reminder Flow
+
+```
+Daily at 8 AM IST
     │
     ▼
 Query jobs WHERE last_date = TODAY+3, TODAY+1, TODAY
@@ -227,7 +260,7 @@ For each job:
     ├── Check if reminder already sent (exam_reminders table)
     ├── Match against user profile
     │   ├── No match → Skip
-    │   └── Match → Send reminder WhatsApp
+    │   └── Match → Send reminder email via Brevo
     └── Record reminder sent
 ```
 
@@ -242,28 +275,33 @@ For each job:
 │  profiles   │       │    jobs     │       │ sent_alerts │
 ├─────────────┤       ├─────────────┤       ├─────────────┤
 │ id (PK)     │       │ id (PK)     │◄──────│ id (PK)     │
-│ whatsapp_no │       │ source      │       │ job_id (FK) │
+│ email       │       │ source      │       │ job_id (FK) │
 │ qualification│      │ title       │       │ sent_at     │
 │ interests[] │       │ organization│       └─────────────┘
 │ experience  │       │ eligibility │
-│ status      │       │ degree_tags[]
-│ alert_mode  │       │ salary      │
-│ resume_url  │       │ exam_required│      ┌─────────────┐
-│ created_at  │       │ last_date   │      │exam_remind..│
-│ updated_at  │       │ apply_link  │      ├─────────────┤
-└─────────────┘       │ raw_hash    │      │ id (PK)     │
-                      │ scraped_at  │      │ job_id (FK) │
-                      └─────────────┘      │ reminder_type
-                                           │ sent_at     │
-                                           └─────────────┘
+│ status      │       │ degree_tags[]│      ┌──────────────┐
+│ created_at  │       │ salary      │      │ daily_digest │
+│ updated_at  │       │ vacancies   │      ├──────────────┤
+└─────────────┘       │ exam_required│     │ id (PK)     │
+                      │ last_date   │◄─────│ job_id (FK) │
+                      │ apply_link  │      │ digest_date │
+                      │ raw_hash    │      │ sent (bool) │
+                      │ scraped_at  │      │ created_at  │
+                      └─────────────┘      └──────────────┘
+                             │
+                      ┌──────┴──────┐
+                      ▼             ▼
+               ┌─────────────┐ ┌──────────────┐
+               │ sent_alerts │ │exam_reminders│
+               └─────────────┘ └──────────────┘
 ```
 
 ### 5.2 Table Details
 
 **profiles**
-- Stores user preferences and onboarding state
-- `alert_mode` controls delivery: instant | digest | paused | bulk
-- `onboarding_state` drives the conversation flow
+- Stores user preferences set via web form at `/setup`
+- `email` — recipient for nightly digest and reminders
+- `status` controls whether the system is active or paused
 
 **jobs**
 - Stores all scraped job postings
@@ -271,8 +309,14 @@ For each job:
 - `exam_required` tracks exams like GATE, UPSC, SSC, Banking
 - `degree_tags` array for fast qualification filtering
 
+**daily_digest** (NEW in v2.1)
+- Queues matched jobs throughout the day
+- `digest_date` — the date this job was queued for
+- `sent` — flipped to TRUE after the nightly email goes out
+- Unique constraint on (job_id, digest_date) prevents duplicates
+
 **sent_alerts**
-- Prevents duplicate WhatsApp messages
+- Prevents duplicate processing
 - One-to-many relationship with jobs
 
 **exam_reminders**
@@ -337,69 +381,97 @@ Relevance score = 0.0 to 1.0 used for internal ranking and future improvements.
 
 ---
 
-## 8. Security & Privacy
+## 8. PDF Generation (ReportLab)
+
+### 8.1 Design Specifications
+
+The nightly PDF digest uses professional formatting:
+
+| Element | Style |
+|---------|-------|
+| Title | "JobScout — Daily Job Digest" in brand blue (#1a73e8), 22pt |
+| Date | Gray subtitle, centered, with job count |
+| Summary | Stats bar: total jobs, sources, open deadlines |
+| Job Cards | Numbered, with org in blue, fields with emoji labels |
+| Urgency | Last date shows "3 days left!", "Last Day!", etc. |
+| Links | Clickable blue hyperlinks in PDF |
+| Footer | Page numbers, generation timestamp |
+| Empty State | "No matching jobs found today" message |
+
+### 8.2 Edge Cases
+
+- **Empty digest:** Generates a PDF with "no jobs found" message (still sent so user knows system is working)
+- **Very long digest (50+ jobs):** Multi-page PDF with automatic page breaks and KeepTogether for job cards
+- **Missing fields:** Gracefully handles null salary, exam, apply_link
+- **PDF generation failure:** Sends error notification email as fallback
+
+---
+
+## 9. Security & Privacy
 
 - **Environment variables:** All secrets stored in Render environment, never in code
 - **Database:** Row Level Security (RLS) enabled with service-role policies
 - **Resume storage:** Private Supabase Storage bucket, no public access
-- **WhatsApp:** Twilio handles end-to-end encryption; bot only sees message content
-- **No PII logging:** Phone numbers are logged only for debugging, not stored externally
+- **Email:** Brevo handles secure SMTP delivery; API key never exposed to client
+- **No PII logging:** Email addresses are logged only for debugging
 
 ---
 
-## 9. Scalability & Extensibility
+## 10. Scalability & Extensibility
 
-### 9.1 Current Limits (Free Tier)
-- **User count:** 1 (v1 single-user design)
+### 10.1 Current Limits (Free Tier)
+- **User count:** 1 (v2.1 single-user design)
 - **Scrape frequency:** Hourly (adjustable in render.yaml)
-- **Message volume:** ~500-1000/month within Twilio trial
+- **Email volume:** 300/day free (only need 1-2/day)
 - **Data storage:** 500MB PostgreSQL + 1GB file storage
 
-### 9.2 Extension Points
+### 10.2 Extension Points
 - **Multi-user:** Add `user_id` foreign key to all tables, add auth layer
 - **New sources:** Implement `BaseScraper` class, add to `get_all_scrapers()`
 - **Better matching:** Replace keyword matching with embedding-based semantic search
 - **Web dashboard:** Add React frontend using Supabase auth
-- **Push notifications:** Add Firebase Cloud Messaging for non-WhatsApp alerts
+- **Weekly digest:** Add a weekly summary option alongside daily
 
 ---
 
-## 10. Technology Choices Justification
+## 11. Technology Choices Justification
 
 | Component | Choice | Alternative | Why This One |
 |-----------|--------|-------------|--------------|
-| WhatsApp | Twilio | Meta Business API | Twilio handles complexity, sandbox for free testing |
-| Web Framework | FastAPI | Flask/Django | Async-native, automatic OpenAPI docs, Twilio-friendly |
-| Database | Supabase | Firebase, AWS RDS | Free tier includes auth + storage + Postgres + realtime |
+| Email | Brevo (Free) | SendGrid, Mailgun | 300/day free, simple SDK, reliable |
+| PDF | ReportLab | WeasyPrint, FPDF | Industry standard, pure Python, flexible styling |
+| Web Framework | FastAPI | Flask/Django | Async-native, automatic OpenAPI docs |
+| Database | Supabase | Firebase, AWS RDS | Free tier includes auth + storage + Postgres |
 | AI | Gemini Flash | Claude, GPT-4 | Free tier generous, fast, good at structured extraction |
-| Hosting | Render | Heroku, Railway | Native cron jobs, free tier sufficient, simple deploy |
+| Hosting | Render | Heroku, Railway | Native cron jobs, free tier sufficient |
 | Keep-Alive | UptimeRobot | Pingdom | Free 5-minute intervals, 50 monitors |
 
 ---
 
-## 11. Monitoring & Observability
+## 12. Monitoring & Observability
 
 - **Render Logs:** Real-time stdout/stderr for all services
 - **UptimeRobot:** External health check with email alerts on downtime
-- **Twilio Logs:** Message delivery status and error tracking
+- **Brevo Dashboard:** Email delivery logs, bounce tracking, quota usage
 - **Supabase Dashboard:** Query performance, storage usage, connection stats
 - **Application Logs:** Structured logging with source tags for easy filtering
 
 ---
 
-## 12. Failure Modes & Recovery
+## 13. Failure Modes & Recovery
 
 | Failure | Impact | Recovery |
 |---------|--------|----------|
 | Scraper fails on one source | Other 3 sources continue | Automatic on next cron run |
 | Gemini rate limit | Jobs missed for 1 cycle | Exponential backoff retry |
-| Twilio API error | Alert not sent | Job stays in DB, retried next cycle |
+| Brevo API error | Digest not sent | 3 retries with backoff; jobs stay in queue |
+| PDF generation error | No PDF attachment | Error notification email sent as fallback |
 | Database connection lost | Operations fail | 3 retries with backoff, fail-safe defaults |
-| Render web service spins down | Webhook timeout | UptimeRobot prevents this |
-| User sends invalid command | Bot replies with help | No crash, graceful degradation |
+| Render web service spins down | /setup unavailable | UptimeRobot prevents this |
+| Email lands in spam | User doesn't see digest | Add sender to contacts; verify DKIM in Brevo |
 
 ---
 
-*Document Version: 2.0.0*  
+*Document Version: 2.1.0*  
 *Last Updated: 2026-08-08*  
 *Author: Rajat9para*

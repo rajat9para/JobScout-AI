@@ -36,3 +36,10 @@ logs/
 
 # Render
 .render/
+
+# Generated PDFs (local testing)
+*.pdf
+digests/
+
+# Agents
+.agents/

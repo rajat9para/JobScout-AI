@@ -1,7 +1,11 @@
 """Scheduled scraper job — runs every hour on Render Cron.
 
-Pipeline: Scrape → Extract (Gemini) → Deduplicate → Match → Alert
+Pipeline: Scrape → Extract (Gemini) → Deduplicate → Match → Queue to Daily Digest
 Isolated per-source: one failure does not block others.
+
+Jobs that match the user's profile are queued into the `daily_digest` table.
+The nightly cron job (nightly_digest_job.py) picks them up, generates a PDF,
+and emails it via Brevo.
 """
 import logging
 import sys
@@ -14,7 +18,6 @@ from app.database import Database
 from app.scraper import get_all_scrapers
 from app.extractor import JobExtractor
 from app.matcher import JobMatcher
-from app.twilio_client import TwilioWhatsApp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,24 +36,26 @@ def run_scraper_job():
     db = Database()
     extractor = JobExtractor()
     matcher = JobMatcher()
-    twilio = TwilioWhatsApp()
 
-    profile = db.get_profile_by_whatsapp(settings.user_whatsapp_number)
+    # Get user profile (single-user mode)
+    profile = db.get_profile_by_email(settings.user_email)
     if not profile:
-        logger.error(f"❌ No profile for {settings.user_whatsapp_number}. Aborting.")
+        profile = db.get_first_active_profile()
+
+    if not profile:
+        logger.error("❌ No active profile found. Visit /setup to create one. Aborting.")
         return
 
     if profile.status != "active":
         logger.info(f"⏸️ Profile status: {profile.status}. Skipping.")
         return
 
-    logger.info(f"👤 Profile: {profile.qualification} | {profile.interests} | Mode: {profile.alert_mode}")
+    logger.info(f"👤 Profile: {profile.email} | {profile.qualification} | {profile.interests}")
 
     scrapers = get_all_scrapers()
     total_new = 0
     total_matches = 0
-    total_alerts = 0
-    matched_jobs = []  # For digest mode
+    total_queued = 0
 
     for scraper in scrapers:
         source = scraper.source_name
@@ -82,32 +87,13 @@ def run_scraper_job():
                         # Matching
                         is_match = matcher.match(profile, job)
 
-                        # BULK mode: send everything
-                        # INSTANT mode: send only matches
-                        # DIGEST mode: collect matches for later
-                        should_alert = False
-
-                        if profile.alert_mode == "bulk":
-                            should_alert = True
-                        elif profile.alert_mode == "instant" and is_match:
-                            should_alert = True
-                        elif profile.alert_mode == "digest" and is_match:
-                            matched_jobs.append(job)
-                            should_alert = False
-
-                        if should_alert:
-                            if db.alert_exists(job_id):
-                                continue
-
-                            success = twilio.send_job_alert(profile.whatsapp_number, job)
-                            if success:
-                                db.record_alert(job_id)
-                                total_alerts += 1
-                                source_matches += 1
-                            else:
-                                logger.error(f"[{source}] Alert failed: {job.title}")
-
                         if is_match:
+                            # Queue matched job for nightly PDF digest
+                            queued = db.add_to_digest(job_id)
+                            if queued:
+                                total_queued += 1
+                                logger.info(f"📋 Queued for digest: {job.title} @ {job.organization}")
+
                             source_matches += 1
                             total_matches += 1
 
@@ -121,17 +107,8 @@ def run_scraper_job():
             logger.error(f"[{source}] Scraper failed: {e}")
             continue
 
-    # Send digest if in digest mode and there are matched jobs
-    if profile.alert_mode == "digest" and matched_jobs:
-        success = twilio.send_digest(profile.whatsapp_number, matched_jobs)
-        if success:
-            for job in matched_jobs:
-                # Record alerts for all digest jobs
-                # We need job IDs which we didn't track — this is a simplification
-            logger.info(f"📋 Digest sent with {len(matched_jobs)} jobs")
-
     logger.info("=" * 60)
-    logger.info(f"✅ Done. New: {total_new}, Matches: {total_matches}, Alerts: {total_alerts}")
+    logger.info(f"✅ Done. New: {total_new}, Matches: {total_matches}, Queued: {total_queued}")
     logger.info("=" * 60)
 
 

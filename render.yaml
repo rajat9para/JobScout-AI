@@ -1,8 +1,8 @@
-# Render Blueprint — JobScout v2
+# Render Blueprint — JobScout v2.1 (Email Digest Edition)
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
-  # ── Web Service (FastAPI + Twilio Webhooks) ──
+  # ── Web Service (FastAPI + Profile Setup) ──
   - type: web
     name: jobscout-v2-web
     runtime: python
@@ -18,13 +18,13 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: TWILIO_ACCOUNT_SID
+      - key: BREVO_API_KEY
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: SENDER_EMAIL
         sync: false
-      - key: TWILIO_WHATSAPP_NUMBER
-        value: "whatsapp:+14155238886"
-      - key: USER_WHATSAPP_NUMBER
+      - key: SENDER_NAME
+        value: "JobScout Bot"
+      - key: USER_EMAIL
         sync: false
       - key: GEMINI_API_KEY
         sync: false
@@ -55,13 +55,13 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: TWILIO_ACCOUNT_SID
+      - key: BREVO_API_KEY
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: SENDER_EMAIL
         sync: false
-      - key: TWILIO_WHATSAPP_NUMBER
-        value: "whatsapp:+14155238886"
-      - key: USER_WHATSAPP_NUMBER
+      - key: SENDER_NAME
+        value: "JobScout Bot"
+      - key: USER_EMAIL
         sync: false
       - key: GEMINI_API_KEY
         sync: false
@@ -72,13 +72,47 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
-  # ── Cron Job 2: Exam Reminders (Daily at 8 AM) ──
+  # ── Cron Job 2: Nightly PDF Digest (10 PM IST = 4:30 PM UTC) ──
+  - type: cron
+    name: jobscout-v2-nightly-digest
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    schedule: "30 16 * * *"  # 4:30 PM UTC = 10:00 PM IST
+    startCommand: python cron/nightly_digest_job.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_NAME
+        value: "JobScout Bot"
+      - key: USER_EMAIL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-1.5-flash"
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ── Cron Job 3: Exam Deadline Reminders (8 AM IST = 2:30 AM UTC) ──
   - type: cron
     name: jobscout-v2-reminders
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    schedule: "0 8 * * *"  # Daily at 8:00 AM
+    schedule: "30 2 * * *"  # 2:30 AM UTC = 8:00 AM IST
     startCommand: python cron/reminder_job.py
     envVars:
       - key: PYTHON_VERSION
@@ -89,13 +123,13 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: TWILIO_ACCOUNT_SID
+      - key: BREVO_API_KEY
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: SENDER_EMAIL
         sync: false
-      - key: TWILIO_WHATSAPP_NUMBER
-        value: "whatsapp:+14155238886"
-      - key: USER_WHATSAPP_NUMBER
+      - key: SENDER_NAME
+        value: "JobScout Bot"
+      - key: USER_EMAIL
         sync: false
       - key: GEMINI_API_KEY
         sync: false

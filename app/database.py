@@ -6,9 +6,10 @@ because of a transient DB issue.
 import logging
 import time
 from typing import Optional, List
+from datetime import date, timedelta, datetime, timezone
 from supabase import create_client, Client
 from app.config import get_settings
-from app.models import Profile, Job, Alert, ExamReminder
+from app.models import Profile, Job, Alert, ExamReminder, DigestEntry
 
 logger = logging.getLogger(__name__)
 
@@ -42,33 +43,49 @@ class Database:
 
     # ── Profile Operations ──
 
-    def get_profile_by_whatsapp(self, whatsapp_number: str) -> Optional[Profile]:
-        """Fetch profile by WhatsApp number. Strips 'whatsapp:' prefix."""
-        phone = whatsapp_number.replace("whatsapp:", "").strip()
+    def get_profile_by_email(self, email: str) -> Optional[Profile]:
+        """Fetch profile by email address."""
+        email = email.strip().lower()
 
         def _fetch():
             result = (
                 self.client.table("profiles")
                 .select("*")
-                .eq("whatsapp_number", phone)
+                .eq("email", email)
                 .execute()
             )
             return Profile(**result.data[0]) if result.data else None
 
         return self._retry(_fetch)
 
-    def create_profile(self, whatsapp_number: str) -> Optional[Profile]:
-        """Create a new profile for a first-time user."""
-        phone = whatsapp_number.replace("whatsapp:", "").strip()
+    def get_first_active_profile(self) -> Optional[Profile]:
+        """Fetch the first active profile (single-user mode)."""
+        def _fetch():
+            result = (
+                self.client.table("profiles")
+                .select("*")
+                .eq("status", "active")
+                .limit(1)
+                .execute()
+            )
+            return Profile(**result.data[0]) if result.data else None
+
+        return self._retry(_fetch)
+
+    def create_profile(self, email: str, qualification: str,
+                       interests: List[str], experience_level: str) -> Optional[Profile]:
+        """Create a new profile."""
+        email = email.strip().lower()
 
         def _create():
             result = (
                 self.client.table("profiles")
                 .insert({
-                    "whatsapp_number": phone,
-                    "onboarding_state": "welcome",
+                    "email": email,
+                    "qualification": qualification,
+                    "interests": interests,
+                    "experience_level": experience_level,
                     "status": "active",
-                    "alert_mode": "instant"
                 })
                 .execute()
             )
@@ -76,12 +93,29 @@ class Database:
 
         return self._retry(_create)
 
-    def update_profile(self, whatsapp_number: str, updates: dict) -> bool:
+    def upsert_profile(self, email: str, qualification: str,
+                       interests: List[str], experience_level: str) -> Optional[Profile]:
+        """Create or update profile by email. Idempotent."""
+        email = email.strip().lower()
+
+        existing = self.get_profile_by_email(email)
+        if existing:
+            self.update_profile(email, {
+                "qualification": qualification,
+                "interests": interests,
+                "experience_level": experience_level,
+                "status": "active",
+            })
+            return self.get_profile_by_email(email)
+        else:
+            return self.create_profile(email, qualification, interests, experience_level)
+
+    def update_profile(self, email: str, updates: dict) -> bool:
         """Update profile fields. Returns True on success."""
-        phone = whatsapp_number.replace("whatsapp:", "").strip()
+        email = email.strip().lower()
 
         def _update():
-            self.client.table("profiles").update(updates).eq("whatsapp_number", phone).execute()
+            self.client.table("profiles").update(updates).eq("email", email).execute()
             return True
 
         return self._retry(_update) or False
@@ -105,7 +139,7 @@ class Database:
     def save_job(self, job: Job) -> Optional[str]:
         """Save a new job. Returns the job ID or None."""
         def _save():
-            data = job.model_dump(exclude={"id", "created_at"}, exclude_none=True)
+            data = job.model_dump(exclude={"id", "created_at", "scraped_at"}, exclude_none=True)
             if data.get("last_date"):
                 data["last_date"] = str(data["last_date"])
             if data.get("degree_tags"):
@@ -119,7 +153,6 @@ class Database:
     def get_recent_jobs(self, hours: int = 24) -> List[Job]:
         """Get jobs scraped within last N hours."""
         def _fetch():
-            from datetime import datetime, timedelta, timezone
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
             result = (
                 self.client.table("jobs")
@@ -136,7 +169,6 @@ class Database:
     def get_jobs_by_deadline(self, days: int = 3) -> List[Job]:
         """Get jobs whose last_date is within N days. For exam reminders."""
         def _fetch():
-            from datetime import date, timedelta
             target = (date.today() + timedelta(days=days)).isoformat()
             result = (
                 self.client.table("jobs")
@@ -192,6 +224,95 @@ class Database:
             }).execute()
             return True
         return self._retry(_record) or False
+
+    # ── Daily Digest Operations ──
+
+    def add_to_digest(self, job_id: str, digest_date: Optional[date] = None) -> bool:
+        """Queue a job for the nightly PDF digest. Skips silently on duplicate."""
+        target_date = (digest_date or date.today()).isoformat()
+
+        def _add():
+            # Check if already in digest for this date (unique constraint will also catch this)
+            existing = (
+                self.client.table("daily_digest")
+                .select("id")
+                .eq("job_id", job_id)
+                .eq("digest_date", target_date)
+                .execute()
+            )
+            if existing.data:
+                logger.debug(f"Job {job_id} already in digest for {target_date}")
+                return True
+
+            self.client.table("daily_digest").insert({
+                "job_id": job_id,
+                "digest_date": target_date,
+                "sent": False,
+            }).execute()
+            return True
+
+        return self._retry(_add) or False
+
+    def get_pending_digest_jobs(self, digest_date: Optional[date] = None) -> List[Job]:
+        """Fetch all un-sent digest entries for a date, joined with full job data."""
+        target_date = (digest_date or date.today()).isoformat()
+
+        def _fetch():
+            # Get digest entries for this date that haven't been sent
+            digest_result = (
+                self.client.table("daily_digest")
+                .select("job_id")
+                .eq("digest_date", target_date)
+                .eq("sent", False)
+                .execute()
+            )
+
+            if not digest_result.data:
+                return []
+
+            job_ids = [entry["job_id"] for entry in digest_result.data]
+
+            # Fetch full job data for these IDs
+            jobs_result = (
+                self.client.table("jobs")
+                .select("*")
+                .in_("id", job_ids)
+                .order("scraped_at", desc=True)
+                .execute()
+            )
+            return [Job(**row) for row in jobs_result.data]
+
+        result = self._retry(_fetch)
+        return result if result is not None else []
+
+    def mark_digest_sent(self, digest_date: Optional[date] = None) -> bool:
+        """Mark all digest entries for a date as sent."""
+        target_date = (digest_date or date.today()).isoformat()
+
+        def _mark():
+            self.client.table("daily_digest").update(
+                {"sent": True}
+            ).eq("digest_date", target_date).eq("sent", False).execute()
+            return True
+
+        return self._retry(_mark) or False
+
+    def get_digest_count(self, digest_date: Optional[date] = None) -> int:
+        """Get count of pending digest entries for a date."""
+        target_date = (digest_date or date.today()).isoformat()
+
+        def _count():
+            result = (
+                self.client.table("daily_digest")
+                .select("id", count="exact")
+                .eq("digest_date", target_date)
+                .eq("sent", False)
+                .execute()
+            )
+            return result.count if result.count is not None else 0
+
+        result = self._retry(_count)
+        return result if result is not None else 0
 
     # ── Storage (Resume) ──
 

@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: str
 
-    # ── Twilio ──
-    twilio_account_sid: str
-    twilio_auth_token: str
-    twilio_whatsapp_number: str = "whatsapp:+14155238886"
-    user_whatsapp_number: str
+    # ── Brevo (Sendinblue) Email ──
+    brevo_api_key: str
+    sender_email: str = "jobscout@noreply.com"
+    sender_name: str = "JobScout Bot"
+    user_email: str  # Recipient email for nightly digest
 
     # ── Gemini (Google AI) ──
     gemini_api_key: str
@@ -29,10 +29,12 @@ class Settings(BaseSettings):
     max_retries: int = 3
     retry_delay_seconds: int = 5
 
+    # ── Digest Settings ──
+    digest_send_hour: int = 22  # 10 PM IST (server time) — when nightly PDF digest is sent
+    digest_timezone: str = "Asia/Kolkata"
+
     # ── Feature Flags ──
     enable_exam_reminders: bool = True
-    enable_daily_digest: bool = False  # User can toggle
-    enable_bulk_mode: bool = False     # User can toggle
 
     model_config = SettingsConfigDict(
         env_file=".env",

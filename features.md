@@ -1,6 +1,7 @@
-# JobScout v2 — Features & Usage Guide
+# JobScout v2.1 — Features & Usage Guide
 
 > Complete list of features, commands, and how to use your personal government job alert bot.
+> **v2.1: Email Digest Edition** — Nightly PDF digest via Brevo email, replacing WhatsApp alerts.
 
 ---
 
@@ -16,100 +17,54 @@
 ---
 
 ### 2. Smart Profile Matching
-**What it does:** Matches extracted jobs against your qualification, interests, and experience level before sending alerts.
+**What it does:** Matches extracted jobs against your qualification, interests, and experience level before adding them to your digest.
 
 **Matching dimensions:**
 - **Qualification:** B.Tech, BSc, BCA, Law, MBA, Diploma, etc.
 - **Interests:** PSU, Banking, Railways, Defence, IT/Software, SSC, UPSC, Teaching, State Govt, Judiciary, Medical
 - **Experience:** Fresher, 0-2 years, 2+ years
 
-**How to use:** Set up during onboarding (send "hello" to start). Update anytime with "UPDATE" command.
+**How to use:** Set up via the web form at `/setup`. Update anytime by revisiting the form.
 
 ---
 
-### 3. WhatsApp Job Alerts
-**What it does:** Sends short, focused job alerts directly to your WhatsApp with only the essential information.
+### 3. 📧 Nightly PDF Email Digest (NEW in v2.1)
+**What it does:** Every night at 10 PM IST, generates a professional **PDF report** containing medium-length descriptions of all matched government jobs found during the day, and emails it to your inbox.
 
-**Alert format:**
-```
-🎓 New Govt Job Alert
+**What's in the PDF:**
+- 📋 Summary statistics (job count, sources, open deadlines)
+- For each job:
+  - 📌 Post title
+  - 🏢 Organization name
+  - 📚 Eligibility requirements
+  - 💰 Salary/pay scale
+  - 👥 Number of vacancies
+  - 📝 Required exam (GATE, UPSC, SSC, etc.)
+  - 📅 Last date with urgency indicator (3 days left!, Last Day!, etc.)
+  - 🔗 Direct apply link
+  - 📡 Source portal
+  - 🎓 Degree tags
+- Page numbers and generation timestamp
+- Clean, professional formatting with color-coded headers
 
-📌 Post: Graduate Engineer Trainee
-🏢 Org: BHEL
-💰 Salary: ₹35,000–₹45,000/month
-📝 Exam: GATE 2026
-📅 Last Date: 15 Aug 2026
-🔗 Details: https://apply-link.com
-
-Reply PAUSE | UPDATE | HELP
-```
-
-**How to use:** Automatic once profile is set up. Control with PAUSE/RESUME commands.
-
----
-
-### 4. Resume Upload & Auto-Detection
-**What it does:** Upload your resume PDF and the bot uses Gemini to automatically detect your qualification, degree, and experience level.
-
-**How to use:**
-1. During onboarding, send your resume PDF instead of typing qualification
-2. The bot parses it and extracts your details
-3. Your resume is stored securely in Supabase Storage (private bucket)
-
-**Note:** Resume parsing is basic in v2. For best results, also verify the detected qualification manually.
+**How to use:** Automatic once profile is set up. Check your email every night!
 
 ---
 
-### 5. Multiple Alert Modes
+### 4. 📅 Exam Deadline Reminders
+**What it does:** Automatically sends email reminders 3 days, 1 day, and on the last day of application deadlines for matched jobs.
 
-#### ⚡ Instant Mode (Default)
-- Sends job alerts immediately when a matching job is found
-- Best for: Users who want to apply as soon as possible
-- Command: `INSTANT`
+**Reminder emails include:**
+- Job title and organization
+- Exam name
+- Last date (highlighted with urgency)
+- Direct "Apply Now" button/link
 
-#### 📋 Digest Mode
-- Sends ONE summary message per day at 9 AM with all matched jobs
-- Best for: Users who don't want frequent notifications
-- Command: `DIGEST`
-
-#### 📦 Bulk Mode
-- Sends ALL new government jobs, not just matched ones
-- Best for: Users who want to see everything and decide manually
-- Command: `BULK`
-
-#### 🎯 Matched Mode
-- Sends ONLY jobs that match your profile (default behavior)
-- Best for: Focused job search
-- Command: `MATCHED`
-
-#### ⏸️ Paused Mode
-- Stops all alerts temporarily
-- Best for: When you're busy or on vacation
-- Command: `PAUSE`
+**How to use:** Automatic. Runs daily at 8 AM IST. No action needed.
 
 ---
 
-### 6. Exam Deadline Reminders
-**What it does:** Automatically reminds you 3 days, 1 day, and on the last day of application deadlines for matched jobs.
-
-**Reminder format:**
-```
-⏰ 3 Days Left!
-
-📌 Post: Graduate Engineer Trainee
-🏢 Org: BHEL
-📝 Exam: GATE 2026
-📅 Last Date: 15 Aug 2026
-🔗 Apply: https://apply-link.com
-
-Don't miss it! 🚀
-```
-
-**How to use:** Automatic. Runs daily at 8 AM. No command needed.
-
----
-
-### 7. Multi-Source Scraping
+### 5. Multi-Source Scraping
 **What it does:** Monitors 4 major government job portals simultaneously:
 
 | Source | Type | Frequency |
@@ -123,7 +78,7 @@ Don't miss it! 🚀
 
 ---
 
-### 8. Deduplication Engine
+### 6. Deduplication Engine
 **What it does:** Uses SHA256 hashing to ensure you NEVER receive the same job posting twice, even if it appears on multiple portals.
 
 **How it works:**
@@ -133,35 +88,28 @@ Don't miss it! 🚀
 
 ---
 
-### 9. Graceful Error Handling
-**What it does:** The bot never crashes. Every operation has retry logic with exponential backoff.
+### 7. Graceful Error Handling
+**What it does:** The system never crashes. Every operation has retry logic with exponential backoff.
 
 **Protected operations:**
 - Database reads/writes (3 retries)
 - Gemini API calls (3 retries with rate limit handling)
-- Twilio message sending (immediate failure handling)
+- Brevo email sending (3 retries with exponential backoff)
 - Web scraping (per-source isolation)
+- PDF generation (fallback on error)
 
 ---
 
-### 10. Command System
+### 8. Web-Based Profile Setup
+**What it does:** Simple, beautiful web form to set up your profile. No WhatsApp onboarding needed.
 
-Send any of these commands to the bot at any time:
+**Profile fields:**
+- 📧 Email address (for receiving digests)
+- 📚 Qualification (B.Tech, BSc, Law, MBA, etc.)
+- 📋 Interest sectors (checkboxes)
+- 💼 Experience level (radio buttons)
 
-| Command | What It Does | Response Time |
-|---------|-------------|---------------|
-| `HELLO` / `HI` / `START` | Start onboarding or show help | Instant |
-| `UPDATE` | Restart profile setup | Instant |
-| `PAUSE` | Stop all alerts | Instant |
-| `RESUME` | Start alerts again | Instant |
-| `STATUS` | View your current profile | Instant |
-| `INSTANT` | Switch to instant alerts | Instant |
-| `DIGEST` | Switch to daily digest | Instant |
-| `BULK` | See ALL jobs (not just matched) | Instant |
-| `MATCHED` | See only matched jobs | Instant |
-| `STATS` | Show today's job statistics | Instant |
-| `FEEDBACK <message>` | Send feedback to developer | Instant |
-| `HELP` | Show all available commands | Instant |
+**How to use:** Visit `/setup` on your deployed web service.
 
 ---
 
@@ -169,62 +117,55 @@ Send any of these commands to the bot at any time:
 
 ### First Time Setup
 
-1. **Send "hello"** to the Twilio WhatsApp sandbox number
-2. **Enter your qualification** (e.g., "B.Tech", "BSc", "Law", "MBA")
-   - OR upload your resume PDF
-3. **Select interests** by replying with numbers:
-   - Example: `1,3,5` (PSU, Railways, IT/Software)
-   - Or type: `All` for everything
-4. **Select experience:**
-   - 1 = Fresher
-   - 2 = 0-2 yrs
-   - 3 = 2+ yrs
-5. **Confirm with YES**
+1. **Deploy** the project on Render (follow `toyourtask.txt`)
+2. **Visit** `https://your-app.onrender.com/setup`
+3. **Fill in** the profile form:
+   - Your email address
+   - Your qualification (e.g., B.Tech, BSc, Law, MBA)
+   - Select interest sectors (PSU, Banking, Railways, etc.)
+   - Select experience level (Fresher, 0-2 yrs, 2+ yrs)
+4. **Click "Save Profile"**
 
-Done! You'll start receiving alerts.
+Done! You'll start receiving nightly PDF digests.
 
 ### Daily Usage
 
-**Morning check:**
-- Send `STATS` to see how many new jobs were found today
-- Check your WhatsApp for any overnight alerts
+**Morning:**
+- Check your email for deadline reminders (sent at 8 AM IST)
 
 **During the day:**
-- Alerts arrive automatically for matching jobs
-- Each alert has: Post, Org, Salary, Exam, Last Date, Apply Link
+- Jobs are scraped hourly and matched against your profile
+- Matched jobs are queued for tonight's digest
 
-**Evening:**
-- If you applied to jobs, no action needed
-- If you want fewer notifications tomorrow: send `DIGEST`
+**Night (10 PM IST):**
+- 📧 Receive PDF digest email
+- Open the PDF attachment
+- Review all matched jobs in one place
+- Apply to interesting positions
 
 ### Changing Your Preferences
 
-**Change qualification or interests:**
-1. Send `UPDATE`
-2. Go through onboarding again
-3. Your new preferences take effect immediately
+**Update profile:**
+1. Visit `/setup` again
+2. Modify your details
+3. Click "Save Profile"
+4. Changes take effect immediately
 
-**Stop alerts temporarily:**
-- Send `PAUSE` — all alerts stop
-- Send `RESUME` when you want them back
+### Web Endpoints
 
-**Switch alert frequency:**
-- `INSTANT` — get alerts immediately (default)
-- `DIGEST` — one summary per day at 9 AM
-- `BULK` — see every government job, not just matched ones
+| Endpoint | Method | What It Does |
+|----------|--------|-------------|
+| `/` | GET | Service status |
+| `/health` | GET | Health check for UptimeRobot |
+| `/setup` | GET | Profile setup form |
+| `/setup` | POST | Save/update profile |
+| `/profile` | GET | View profile as JSON |
+| `/digest-status` | GET | Check pending digest jobs |
+| `/trigger-digest` | GET | Manually send digest (testing) |
 
 ---
 
 ## 🛠️ Advanced Features
-
-### Resume-Based Matching (v2.1+)
-When you upload a resume, the bot:
-1. Stores it in encrypted Supabase Storage
-2. Parses it with Gemini to detect your degree
-3. Uses detected qualification for matching
-4. Keeps the resume for future parsing improvements
-
-**Privacy:** Your resume is stored in a private bucket. No one except the bot can access it.
 
 ### Interest Keyword Mapping
 The bot uses intelligent keyword mapping for interests:
@@ -247,49 +188,42 @@ The bot automatically detects if a job is fresher-friendly:
 
 ---
 
-## 📊 Alert Examples
+## 📊 What You Receive
 
-### Example 1: PSU Job
+### Nightly PDF Digest (10 PM IST)
 ```
-🎓 New Govt Job Alert
+📋 JobScout — Daily Job Digest
+Generated on Friday, 08 August 2026 • 7 matching jobs found
 
-📌 Post: Management Trainee
-🏢 Org: NTPC Limited
-💰 Salary: ₹40,000–₹55,000/month
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Graduate Engineer Trainee
+   🏢 BHEL
+   📚 Eligibility: B.Tech/B.E. in any branch, 60% min
+   💰 Salary: ₹35,000–₹45,000/month
+   👥 Vacancies: 150
+   📝 Exam: GATE 2026
+   📅 Last Date: 15 Aug 2026 (7 days left)
+   🔗 Apply: https://bhel.com/careers
+   🎓 Degrees: B.Tech, B.E.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. Probationary Officer
+   🏢 State Bank of India
+   ...
+```
+
+### Deadline Reminder Email
+```
+Subject: ⏰ 3 Days Left — Graduate Engineer Trainee @ BHEL
+
+📌 Post: Graduate Engineer Trainee
+🏢 Organization: BHEL
 📝 Exam: GATE 2026
-📅 Last Date: 20 Aug 2026
-🔗 Details: https://ntpc.co.in/careers
+📅 Last Date: 15 Aug 2026
 
-Reply PAUSE | UPDATE | HELP
-```
-
-### Example 2: Banking Job
-```
-🎓 New Govt Job Alert
-
-📌 Post: Probationary Officer
-🏢 Org: State Bank of India
-💰 Salary: ₹36,000–₹63,000/month
-📝 Exam: SBI PO 2026
-📅 Last Date: 12 Aug 2026
-🔗 Details: https://sbi.co.in/web/careers
-
-Reply PAUSE | UPDATE | HELP
-```
-
-### Example 3: Daily Digest
-```
-📋 Daily Job Digest
-
-1. Graduate Engineer @ BHEL (Due: 15 Aug)
-2. Probationary Officer @ SBI (Due: 12 Aug)
-3. Junior Engineer @ Railways (Due: 18 Aug)
-4. Scientist @ DRDO (Due: 25 Aug)
-5. Stenographer @ SSC (Due: 10 Aug)
-
-...and 3 more.
-
-Reply BULK for full details | PAUSE to stop
+[Apply Now →]
 ```
 
 ---
@@ -304,26 +238,26 @@ These are set in your `.env` file or Render environment variables:
 | `GEMINI_MODEL` | gemini-1.5-flash | AI model for extraction |
 | `LOG_LEVEL` | INFO | Detail level in logs (DEBUG/INFO/WARNING/ERROR) |
 | `MAX_RETRIES` | 3 | Retry attempts for failed operations |
-| `ENABLE_EXAM_REMINDERS` | true | Send deadline reminders |
-| `ENABLE_DAILY_DIGEST` | false | Default digest mode |
+| `SENDER_NAME` | JobScout Bot | Name shown in email "From" field |
 
 ---
 
 ## 🚀 Future Roadmap
 
-### v2.1 (Next)
+### v2.2 (Next)
 - [ ] PDF notice parsing (extract text from PDF job notifications)
 - [ ] Better resume parsing (extract skills, projects, CGPA)
 - [ ] Location-based filtering (state/city preferences)
 - [ ] Salary range filtering
+- [ ] Weekly digest option (in addition to daily)
 
 ### v3.0 (Later)
 - [ ] Multi-user support with authentication
 - [ ] Web dashboard for profile management
-- [ ] Push notifications (Firebase)
 - [ ] Job application tracking (applied, shortlisted, rejected)
 - [ ] Interview date reminders
 - [ ] Community features (share jobs with friends)
+- [ ] Push notifications (Firebase)
 
 ---
 
@@ -331,35 +265,34 @@ These are set in your `.env` file or Render environment variables:
 
 1. **Use specific qualifications:** "B.Tech CSE" is better than just "Engineering"
 2. **Select multiple interests:** Don't just pick one — government jobs often span categories
-3. **Upload your resume:** Even basic parsing helps with matching accuracy
-4. **Check STATS daily:** Know how many jobs the bot found even if none matched
-5. **Use DIGEST mode during work hours:** Switch to INSTANT on weekends
-6. **Don't ignore Bulk mode:** Sometimes a "non-matching" job is actually relevant
-7. **Send FEEDBACK:** Your suggestions directly improve the bot
+3. **Check your email nightly:** The PDF arrives at 10 PM IST with all day's matches
+4. **Check spam folder:** Add the sender email to your contacts for reliable delivery
+5. **Use /trigger-digest for testing:** Manually trigger a digest to verify everything works
+6. **Monitor Brevo dashboard:** Check email delivery logs if digests stop arriving
 
 ---
 
 ## 🐛 Common Questions
 
-**Q: Why didn't I get any alerts today?**
-A: Either no new matching jobs were posted, or your profile is too restrictive. Try BULK mode to see all jobs.
+**Q: Why didn't I get a digest email today?**
+A: Check Brevo API key is valid, sender email is verified, and check spam folder. Try `/trigger-digest` to test manually.
 
 **Q: Can I add more job sources?**
 A: Yes! Edit `app/scraper.py`, create a new scraper class, and add it to `get_all_scrapers()`. No other changes needed.
 
 **Q: Is my data safe?**
-A: Yes. Your phone number and resume are stored in Supabase with Row Level Security. The resume bucket is private.
+A: Yes. Your email and profile are stored in Supabase with Row Level Security. The resume bucket is private.
 
 **Q: How much does this cost?**
-A: Completely free on free tiers. After Twilio trial ($15.50 credit), WhatsApp messages cost ~$0.005 each (~$3-5/month for personal use).
+A: Completely free on free tiers. Brevo gives 300 emails/day free (you only need 1-2/day).
 
-**Q: Can I use this for my friends too?**
-A: v2 is single-user. v3 will support multiple users. For now, each friend needs their own deployment.
+**Q: The PDF is empty every night. What do I do?**
+A: Widen your interests on the `/setup` page. Check scraper logs in Render to see if jobs are being found and matched.
 
-**Q: The bot stopped responding. What do I do?**
-A: Check UptimeRobot dashboard. If monitor is down, check Render logs. Usually fixed by redeploying the web service.
+**Q: Can I change the digest time?**
+A: Yes! Update the cron schedule in `render.yaml`. The default is `30 16 * * *` (4:30 PM UTC = 10 PM IST).
 
 ---
 
-*Version: 2.0.0*  
+*Version: 2.1.0*  
 *Last Updated: 2026-08-08*
