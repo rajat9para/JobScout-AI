@@ -1,10 +1,12 @@
 <div align="center">
 
-# 📋 JobScout v2.1
+<img src="weblogo.png" alt="JobScout Logo" width="180">
+
+# JobScout v2.2
 
 ### Your Personal Government Job Alert Bot
 
-**AI-Powered** • **Nightly PDF Digest** • **100% Free**
+**AI-Powered** • **Dual Daily PDF Digest** • **Web Dashboard** • **100% Free**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -16,8 +18,8 @@
 <br>
 
 *Never miss a Sarkari Naukri again. JobScout monitors 4 government job portals 24/7,*  
-*extracts structured data with AI, matches jobs to your profile, and delivers a*  
-*professional PDF digest to your inbox every night — completely free.*
+*extracts structured data with AI, matches jobs to your profile, and delivers*  
+*professional PDF digests twice daily — at 10 AM and 6 PM IST.*
 
 <br>
 
@@ -34,21 +36,34 @@
 ### 🤖 AI-Powered Extraction
 Traditional scrapers break when websites change. JobScout uses **Google Gemini** to understand page context and extract structured job data — no brittle CSS selectors.
 
-### 📄 Nightly PDF Digest  
-No more scattered notifications. Get **one professional PDF** every night at 10 PM IST with all matching jobs — complete with eligibility, salary, exam details, and deadlines.
+### 📄 Dual Daily PDF Digest  
+Get **two professional PDFs** daily — at **10 AM** and **6 PM IST** — with all matching jobs including eligibility, salary, exam details, deadlines, and clickable apply links.
 
 </td>
 <td width="50%">
 
 ### 🎯 Smart Matching
-Three-dimensional matching against your **qualification** (B.Tech, BSc, Law...), **interests** (PSU, Banking, Railways...), and **experience level** — only relevant jobs reach you.
+Three-dimensional matching against your **qualification**, **interests** (11 sectors), and **experience level** — only relevant jobs reach you.
 
-### 💸 Completely Free
-Runs entirely on free tiers: Render hosting, Supabase database, Gemini AI, Brevo email. **$0/month** for personal use.
+### 🌐 Interactive Web Dashboard
+Beautiful dark-mode dashboard to manage your profile, pause/resume notifications, upload resume, view digest history, and trigger actions — all from your browser.
 
 </td>
 </tr>
 </table>
+
+---
+
+## 🖥️ Web Dashboard
+
+The interactive dashboard lets you control everything from your browser:
+
+- **📊 Live Stats** — Pending jobs, total scraped, digests sent
+- **👤 Profile Editor** — Update qualification, interests, experience with chip selectors
+- **⏸️ Pause/Resume** — One-click notification toggle
+- **📄 Resume Upload** — Drag & drop resume, AI-parsed automatically
+- **📬 Digest History** — Track all sent digests with job counts
+- **⚡ Quick Actions** — Manually trigger scraper or digest
 
 ---
 
@@ -65,29 +80,27 @@ Runs entirely on free tiers: Render hosting, Supabase database, Gemini AI, Brevo
               │  Hourly Scraper │  ← Render Cron (every hour)
               │  + Gemini AI    │
               └────────┬────────┘
-                       │ Extracted jobs
+                       │ Extracted & matched jobs
                        ▼
               ┌─────────────────┐
-              │  Profile Match  │  ← Qualification + Interests + Experience
-              └────────┬────────┘
-                       │ Matched jobs → daily_digest table
-                       ▼
-              ┌─────────────────┐
-              │  Nightly Cron   │  ← Render Cron (10 PM IST)
-              │  PDF Generator  │
-              │  (ReportLab)    │
-              └────────┬────────┘
-                       │ Professional PDF
-                       ▼
-              ┌─────────────────┐
-              │  Brevo Email    │  ← PDF attachment
-              │  API            │
-              └────────┬────────┘
-                       │
-                       ▼
-              ┌─────────────────┐
-              │  📧 Your Inbox  │  ← One PDF, all jobs, every night
-              └─────────────────┘
+              │  Daily Digest   │  ← Supabase daily_digest table
+              │  Queue          │
+              └───────┬─┬───────┘
+                      │ │
+            ┌─────────┘ └─────────┐
+            ▼                     ▼
+   ┌─────────────────┐  ┌─────────────────┐
+   │ 🌅 Morning Cron │  │ 🌇 Evening Cron │
+   │   10:00 AM IST  │  │   6:00 PM IST   │
+   │  PDF + Email    │  │  PDF + Email     │
+   └────────┬────────┘  └────────┬────────┘
+            │                    │
+            └────────┬───────────┘
+                     ▼
+            ┌─────────────────┐
+            │  📧 Your Inbox  │
+            │  2 PDFs / day   │
+            └─────────────────┘
 ```
 
 ---
@@ -96,12 +109,12 @@ Runs entirely on free tiers: Render hosting, Supabase database, Gemini AI, Brevo
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Web Framework** | FastAPI + Uvicorn | Profile setup, health checks, APIs |
+| **Web Framework** | FastAPI + Uvicorn | Dashboard, APIs, health checks |
 | **AI Engine** | Google Gemini Flash | Structured job extraction from HTML |
-| **Database** | Supabase (PostgreSQL) | Jobs, profiles, digest queue, alerts |
+| **Database** | Supabase (PostgreSQL) | Jobs, profiles, digest queue, history |
 | **PDF Generation** | ReportLab | Professional A4 digest documents |
 | **Email** | Brevo (Sendinblue) | Transactional email with PDF attachment |
-| **Hosting** | Render | Web service + 3 cron jobs (free tier) |
+| **Hosting** | Render | Web service + 4 cron jobs (free tier) |
 | **Keep-Alive** | UptimeRobot | Prevents Render free-tier spin-down |
 
 ---
@@ -123,26 +136,23 @@ cp .env.example .env
 
 ### 2. Setup Database
 
-```sql
--- Run sql/schema.sql in Supabase SQL Editor
--- Creates 5 tables: profiles, jobs, sent_alerts, exam_reminders, daily_digest
-```
+Run `sql/schema.sql` in Supabase SQL Editor — creates 6 tables:
+`profiles`, `jobs`, `sent_alerts`, `exam_reminders`, `daily_digest`, `digest_history`
 
 ### 3. Deploy to Render
 
-```yaml
-# render.yaml is pre-configured with 4 services:
-# 1. Web Service (FastAPI)
-# 2. Hourly Scraper (Cron)
-# 3. Nightly Digest (Cron - 10 PM IST)
-# 4. Deadline Reminders (Cron - 8 AM IST)
-```
-
 Push to GitHub → Connect in Render → Add env vars → Deploy!
 
-### 4. Setup Profile
+Render auto-detects `render.yaml` and creates 5 services:
+- Web Dashboard (always-on)
+- Hourly Scraper (cron)
+- Morning Digest — 10 AM IST (cron)
+- Evening Digest — 6 PM IST (cron)
+- Deadline Reminders — 8 AM IST (cron)
 
-Visit `https://your-app.onrender.com/setup` and fill in the form.
+### 4. Open Dashboard
+
+Visit `https://your-app.onrender.com` — the interactive dashboard opens.
 
 > 📖 **Detailed step-by-step guide:** See [`toyourtask.txt`](toyourtask.txt)
 
@@ -154,33 +164,36 @@ Visit `https://your-app.onrender.com/setup` and fill in the form.
 jobscout_v2/
 ├── app/
 │   ├── __init__.py          # Package init, version
-│   ├── config.py            # Environment variable management (Pydantic)
+│   ├── config.py            # Environment variables (Pydantic)
 │   ├── database.py          # Supabase operations with retry logic
-│   ├── models.py            # Pydantic data models (Profile, Job, DigestEntry)
-│   ├── scraper.py           # 4 web scrapers (NCS, Sarkari, FreeJob, Employment)
-│   ├── extractor.py         # Gemini AI job extraction from raw HTML
+│   ├── models.py            # Pydantic data models
+│   ├── scraper.py           # 4 web scrapers
+│   ├── extractor.py         # Gemini AI job extraction + resume parsing
 │   ├── matcher.py           # 3-dimensional job-to-profile matching
 │   ├── pdf_generator.py     # ReportLab PDF digest builder
 │   ├── brevo_mailer.py      # Brevo transactional email client
-│   └── main.py              # FastAPI app (setup form, health, APIs)
+│   ├── dashboard.py         # Interactive web dashboard HTML/CSS/JS
+│   └── main.py              # FastAPI app (dashboard, APIs)
 │
 ├── cron/
-│   ├── __init__.py
 │   ├── scraper_job.py       # Hourly: scrape → extract → match → queue
-│   ├── nightly_digest_job.py # Nightly: queue → PDF → email
+│   ├── nightly_digest_job.py # Dual: morning/evening PDF digest
 │   └── reminder_job.py      # Daily: deadline reminders via email
 │
+├── static/
+│   └── weblogo.png          # Dashboard logo
+│
 ├── sql/
-│   └── schema.sql           # PostgreSQL schema (5 tables + indexes)
+│   └── schema.sql           # PostgreSQL schema (6 tables)
 │
 ├── .env.example             # Environment variable template
 ├── .gitignore
-├── render.yaml              # Render Blueprint (4 services)
+├── render.yaml              # Render Blueprint (5 services)
 ├── requirements.txt         # Python dependencies
-├── features.md              # Complete feature guide
-├── fullartitecture.md       # Deep technical architecture
-├── toyourtask.txt           # Step-by-step setup checklist
-├── LICENSE                  # MIT License
+├── weblogo.png              # Project logo
+├── features.md              # Feature guide
+├── fullartitecture.md       # Technical architecture
+├── toyourtask.txt           # Setup checklist
 └── README.md                # ← You are here
 ```
 
@@ -199,8 +212,6 @@ jobscout_v2/
 | `USER_EMAIL` | ✅ | Your email (receives digests) |
 | `GEMINI_API_KEY` | ✅ | Google AI Studio API key |
 | `GEMINI_MODEL` | ⬜ | Default: `gemini-1.5-flash` |
-| `APP_ENV` | ⬜ | Default: `production` |
-| `LOG_LEVEL` | ⬜ | Default: `INFO` |
 
 ---
 
@@ -213,31 +224,29 @@ jobscout_v2/
 | 📋 **FreeJobAlert** | freejobalert.com | Cross-Reference Source |
 | 📰 **Employment News** | employmentnews.gov.in | Official Weekly Gazette |
 
-> Want to add more sources? Create a new class in `app/scraper.py` extending `BaseScraper` and add it to `get_all_scrapers()`. That's it!
-
 ---
 
 ## 💰 Cost Breakdown
 
 | Service | Free Tier Limits | Your Usage |
 |---------|-----------------|------------|
-| **Render** (Web + 3 Crons) | Free plan | Well within limits |
+| **Render** (Web + 4 Crons) | Free plan | Well within limits |
 | **Supabase** (Database) | 500MB + 1GB storage | ~10MB/month |
-| **Brevo** (Email) | 300/day, 9000/month | 1-2 emails/day |
+| **Brevo** (Email) | 300/day, 9000/month | 2-4 emails/day |
 | **Gemini** (AI) | 15 RPM, 1M tokens/day | ~50 requests/day |
-| **UptimeRobot** (Keep-alive) | 50 monitors | 1 monitor |
+| **UptimeRobot** | 50 monitors | 1 monitor |
 | **Total** | — | **$0/month** ✨ |
 
 ---
 
-## 🛡️ Resilience & Error Handling
+## 🛡️ Resilience
 
-- **Database operations:** 3 retries with exponential backoff
-- **Gemini API:** Rate limit detection, 3 retries, fail-safe empty returns
-- **Brevo emails:** 3 retries with exponential backoff
-- **PDF generation:** Fallback to error notification if generation fails
-- **Scraper isolation:** Each source runs independently — one failure doesn't block others
-- **Deduplication:** SHA256 hashing prevents duplicate job entries across sources
+- **Database:** 3 retries with exponential backoff
+- **Gemini API:** Rate limit detection, automatic retry
+- **Brevo:** 3 retries with exponential backoff
+- **PDF:** Fallback error notification if generation fails
+- **Scrapers:** Per-source isolation — one failure doesn't block others
+- **Deduplication:** SHA256 hashing prevents duplicate entries
 
 ---
 
@@ -245,28 +254,28 @@ jobscout_v2/
 
 | File | Description |
 |------|-------------|
-| [`features.md`](features.md) | Complete feature list, usage guide, and FAQ |
-| [`fullartitecture.md`](fullartitecture.md) | Deep technical architecture document |
+| [`features.md`](features.md) | Complete feature list and usage guide |
+| [`fullartitecture.md`](fullartitecture.md) | Deep technical architecture |
 | [`toyourtask.txt`](toyourtask.txt) | Step-by-step setup checklist |
-| [`sql/schema.sql`](sql/schema.sql) | Database schema with comments |
+| [`sql/schema.sql`](sql/schema.sql) | Database schema |
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] PDF job notice parsing (extract text from PDFs posted on portals)
-- [ ] Location-based filtering (state/city preferences)
-- [ ] Salary range filtering
-- [ ] Weekly digest option
-- [ ] Multi-user support with authentication
-- [ ] Web dashboard for profile management
-- [ ] Job application tracking
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+- [x] AI-powered job extraction (Gemini)
+- [x] Multi-source scraping (4 portals)
+- [x] Smart profile matching
+- [x] PDF digest generation
+- [x] Brevo email delivery
+- [x] Web dashboard with profile management
+- [x] Dual daily digests (10 AM + 6 PM)
+- [x] Resume upload & AI parsing
+- [x] Digest history tracking
+- [ ] PDF notice parsing from portals
+- [ ] Location-based filtering
+- [ ] Multi-user support
+- [ ] Mobile app
 
 ---
 

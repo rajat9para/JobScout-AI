@@ -1,10 +1,10 @@
-# Render Blueprint — JobScout v2.1 (Email Digest Edition)
-# Docs: https://render.com/docs/blueprint-spec
+# Render Blueprint — JobScout v2.2 (Single Web Service)
+# All cron jobs run INSIDE the web service via APScheduler
+# No separate cron services needed — works on Render Free Plan!
 
 services:
-  # ── Web Service (FastAPI + Profile Setup) ──
   - type: web
-    name: jobscout-v2-web
+    name: jobscout-v2
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -34,108 +34,4 @@ services:
         value: production
       - key: LOG_LEVEL
         value: INFO
-      - key: SCRAPE_INTERVAL_MINUTES
-        value: "60"
     healthCheckPath: /health
-
-  # ── Cron Job 1: Job Scraper (Hourly) ──
-  - type: cron
-    name: jobscout-v2-scraper
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    schedule: "0 * * * *"  # Every hour at :00
-    startCommand: python cron/scraper_job.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: SENDER_EMAIL
-        sync: false
-      - key: SENDER_NAME
-        value: "JobScout Bot"
-      - key: USER_EMAIL
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: "gemini-1.5-flash"
-      - key: APP_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: INFO
-
-  # ── Cron Job 2: Nightly PDF Digest (10 PM IST = 4:30 PM UTC) ──
-  - type: cron
-    name: jobscout-v2-nightly-digest
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    schedule: "30 16 * * *"  # 4:30 PM UTC = 10:00 PM IST
-    startCommand: python cron/nightly_digest_job.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: SENDER_EMAIL
-        sync: false
-      - key: SENDER_NAME
-        value: "JobScout Bot"
-      - key: USER_EMAIL
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: "gemini-1.5-flash"
-      - key: APP_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: INFO
-
-  # ── Cron Job 3: Exam Deadline Reminders (8 AM IST = 2:30 AM UTC) ──
-  - type: cron
-    name: jobscout-v2-reminders
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    schedule: "30 2 * * *"  # 2:30 AM UTC = 8:00 AM IST
-    startCommand: python cron/reminder_job.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: SENDER_EMAIL
-        sync: false
-      - key: SENDER_NAME
-        value: "JobScout Bot"
-      - key: USER_EMAIL
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: "gemini-1.5-flash"
-      - key: APP_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: INFO

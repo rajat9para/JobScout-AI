@@ -1,16 +1,18 @@
-"""Nightly PDF digest job — runs every night at 10 PM IST on Render Cron.
+"""PDF digest job — runs twice daily on Render Cron.
+
+Schedule:
+  Morning:  10:00 AM IST (4:30 AM UTC)  → python cron/nightly_digest_job.py --type morning
+  Evening:   6:00 PM IST (12:30 PM UTC) → python cron/nightly_digest_job.py --type evening
 
 Pipeline:
   1. Fetch user profile
-  2. Query daily_digest table for today's un-sent matched jobs
-  3. Join with jobs table for full details
-  4. Generate professional PDF with all job descriptions
-  5. Email the PDF as attachment via Brevo
-  6. Mark digest entries as sent
-
-This is the core of the new email-based alert system, replacing
-the old Twilio WhatsApp instant alerts.
+  2. Query daily_digest table for un-sent matched jobs
+  3. Generate professional PDF with all job descriptions
+  4. Email the PDF as attachment via Brevo
+  5. Mark digest entries as sent
+  6. Record in digest_history for dashboard tracking
 """
+import argparse
 import logging
 import sys
 import os
@@ -30,10 +32,21 @@ logging.basicConfig(
 logger = logging.getLogger("jobscout.digest")
 
 
-def run_nightly_digest():
-    """Main entry point for the nightly PDF digest email."""
+def run_digest(digest_type: str = "scheduled"):
+    """Main entry point for the PDF digest email.
+
+    Args:
+        digest_type: "morning", "evening", "manual", or "scheduled"
+    """
+    label = {
+        "morning": "🌅 Morning",
+        "evening": "🌇 Evening",
+        "manual": "⚡ Manual",
+        "scheduled": "📧 Scheduled",
+    }.get(digest_type, "📧")
+
     logger.info("=" * 60)
-    logger.info("🌙 Nightly digest job started")
+    logger.info(f"{label} digest job started")
     logger.info("=" * 60)
 
     settings = get_settings()
@@ -49,7 +62,7 @@ def run_nightly_digest():
         profile = db.get_first_active_profile()
 
     if not profile:
-        logger.error("❌ No profile found. Visit /setup to create one. Aborting.")
+        logger.error("❌ No profile found. Visit the dashboard to create one.")
         return
 
     if profile.status != "active":
@@ -57,23 +70,21 @@ def run_nightly_digest():
         return
 
     user_email = profile.email or settings.user_email
-    logger.info(f"📧 Preparing digest for: {user_email}")
+    logger.info(f"📧 Preparing {digest_type} digest for: {user_email}")
 
     # ── Step 2: Fetch pending digest jobs ──
     jobs = db.get_pending_digest_jobs(today)
-    pending_count = len(jobs)
-    logger.info(f"📋 Found {pending_count} jobs in today's digest queue")
+    job_count = len(jobs)
+    logger.info(f"📋 Found {job_count} jobs in digest queue")
 
     # ── Step 3: Generate PDF ──
-    # We ALWAYS send a digest email (even if empty — so user knows the system is working)
     try:
         pdf_bytes = pdf_gen.generate(jobs, digest_date=today)
         pdf_size_kb = len(pdf_bytes) / 1024
-        logger.info(f"📄 PDF generated: {pdf_size_kb:.1f} KB, {pending_count} jobs")
+        logger.info(f"📄 PDF generated: {pdf_size_kb:.1f} KB, {job_count} jobs")
     except Exception as e:
         logger.error(f"❌ PDF generation failed: {e}")
-        # Fallback: send email without PDF
-        _send_error_notification(mailer, user_email, str(e))
+        _send_error_notification(mailer, user_email, settings, str(e))
         return
 
     # ── Step 4: Send email via Brevo ──
@@ -81,33 +92,30 @@ def run_nightly_digest():
         success = mailer.send_digest_email(
             to_email=user_email,
             pdf_bytes=pdf_bytes,
-            job_count=pending_count,
+            job_count=job_count,
             digest_date=today,
         )
     except Exception as e:
         logger.error(f"❌ Email sending failed: {e}")
         success = False
 
-    # ── Step 5: Mark as sent ──
+    # ── Step 5: Mark as sent + record history ──
     if success:
         db.mark_digest_sent(today)
-        logger.info(f"✅ Digest sent to {user_email} with {pending_count} jobs")
+        db.record_digest_history(job_count, digest_type)
+        logger.info(f"✅ {label} digest sent to {user_email} with {job_count} jobs")
     else:
-        logger.error(f"❌ Digest email failed for {user_email}. "
-                      "Jobs remain in queue for retry.")
+        logger.error(f"❌ Digest email failed. Jobs remain in queue for next run.")
 
     logger.info("=" * 60)
-    logger.info(f"🌙 Nightly digest job finished. Sent: {success}, Jobs: {pending_count}")
+    logger.info(f"{label} digest job finished. Sent: {success}, Jobs: {job_count}")
     logger.info("=" * 60)
 
 
-def _send_error_notification(mailer: BrevoMailer, to_email: str, error_msg: str):
+def _send_error_notification(mailer, to_email, settings, error_msg):
     """Send a simple error notification if PDF generation fails."""
     try:
         import sib_api_v3_sdk
-        from app.config import get_settings
-        settings = get_settings()
-
         email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": to_email}],
             sender={"name": settings.sender_name, "email": settings.sender_email},
@@ -115,9 +123,9 @@ def _send_error_notification(mailer: BrevoMailer, to_email: str, error_msg: str)
             html_content=f"""
             <html><body style="font-family: sans-serif; padding: 20px;">
                 <h2 style="color: #c5221f;">⚠️ Digest Generation Error</h2>
-                <p>The nightly digest PDF could not be generated.</p>
+                <p>The digest PDF could not be generated.</p>
                 <p style="color: #666;">Error: {error_msg}</p>
-                <p>The system will retry on the next cycle. Your jobs are safe in the queue.</p>
+                <p>Your jobs are safe in the queue and will be included in the next digest.</p>
                 <p style="font-size: 11px; color: #999;">— JobScout Bot</p>
             </body></html>
             """,
@@ -128,4 +136,9 @@ def _send_error_notification(mailer: BrevoMailer, to_email: str, error_msg: str)
 
 
 if __name__ == "__main__":
-    run_nightly_digest()
+    parser = argparse.ArgumentParser(description="JobScout PDF Digest")
+    parser.add_argument("--type", default="scheduled",
+                        choices=["morning", "evening", "manual", "scheduled"],
+                        help="Type of digest: morning, evening, manual, or scheduled")
+    args = parser.parse_args()
+    run_digest(args.type)

@@ -332,3 +332,69 @@ class Database:
         def _download():
             return self.client.storage.from_("resumes").download(file_path)
         return self._retry(_download)
+
+    # ── Stats & History ──
+
+    def get_total_jobs_count(self) -> int:
+        """Get total number of scraped jobs."""
+        def _count():
+            result = self.client.table("jobs").select("id", count="exact").execute()
+            return result.count if result.count is not None else 0
+        result = self._retry(_count)
+        return result if result is not None else 0
+
+    def get_digests_sent_count(self) -> int:
+        """Get total number of digests sent."""
+        def _count():
+            result = (
+                self.client.table("digest_history")
+                .select("id", count="exact")
+                .execute()
+            )
+            return result.count if result.count is not None else 0
+        try:
+            result = self._retry(_count)
+            return result if result is not None else 0
+        except Exception:
+            return 0
+
+    def record_digest_history(self, job_count: int, digest_type: str = "scheduled") -> bool:
+        """Record a digest send event for history tracking."""
+        def _record():
+            self.client.table("digest_history").insert({
+                "digest_date": date.today().isoformat(),
+                "job_count": job_count,
+                "digest_type": digest_type,
+                "sent": True,
+            }).execute()
+            return True
+        try:
+            return self._retry(_record) or False
+        except Exception:
+            return False
+
+    def get_digest_history(self, limit: int = 30) -> List[dict]:
+        """Get recent digest history for dashboard display."""
+        def _fetch():
+            result = (
+                self.client.table("digest_history")
+                .select("*")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return [
+                {
+                    "date": row.get("digest_date", ""),
+                    "job_count": row.get("job_count", 0),
+                    "type": row.get("digest_type", "scheduled"),
+                    "sent": row.get("sent", False),
+                }
+                for row in result.data
+            ]
+        try:
+            result = self._retry(_fetch)
+            return result if result is not None else []
+        except Exception:
+            return []
+

@@ -63,6 +63,17 @@ CREATE TABLE IF NOT EXISTS daily_digest (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Digest History Table (NEW in v2.2) ──
+-- Tracks every digest email sent for dashboard history view
+CREATE TABLE IF NOT EXISTS digest_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    digest_date DATE DEFAULT CURRENT_DATE,
+    job_count INTEGER DEFAULT 0,
+    digest_type TEXT DEFAULT 'scheduled' CHECK (digest_type IN ('scheduled', 'manual', 'morning', 'evening')),
+    sent BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── Indexes ──
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON profiles(status);

@@ -1,4 +1,4 @@
-# JobScout v2 — Python Dependencies
+# JobScout v2.2 — Python Dependencies
 # Install: pip install -r requirements.txt
 
 # Web Framework
@@ -29,3 +29,6 @@ sib-api-v3-sdk>=7.6.0
 
 # PDF Generation
 reportlab>=4.2.0
+
+# Built-in Scheduler (runs cron jobs inside web service)
+apscheduler>=3.10.0

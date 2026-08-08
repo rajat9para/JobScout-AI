@@ -1,17 +1,25 @@
-"""FastAPI web service — profile setup, health checks, and API endpoints.
+"""FastAPI web service — dashboard, APIs, and health checks.
 
-This is the always-on service that provides a web form for profile setup,
-health checks for UptimeRobot, and debug/trigger endpoints.
+Serves the interactive web dashboard and provides REST API endpoints for:
+- Profile management (CRUD, pause/resume)
+- Resume upload and AI parsing
+- Digest status and history
+- Manual triggers for scraping and digest
 """
 import logging
+import os
+import threading
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime
+from typing import Optional
 
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import Database
+from app.dashboard import DASHBOARD_HTML
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,299 +30,259 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 JobScout v2 starting up...")
-    # Auto-create profile from env vars if it doesn't exist
+    logger.info("🚀 JobScout v2.2 starting up...")
     _ensure_profile_from_env()
+
+    # Start built-in scheduler (scraper + digest + reminders)
+    # Only on Render/local — Vercel is serverless, no persistent scheduler
+    is_serverless = os.environ.get("VERCEL", "") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME", "")
+    if not is_serverless:
+        try:
+            from app.scheduler import start_scheduler
+            start_scheduler()
+        except Exception as e:
+            logger.warning(f"Scheduler start failed (non-fatal): {e}")
+
     yield
-    logger.info("🛑 JobScout v2 shutting down...")
+
+    # Graceful shutdown
+    if not is_serverless:
+        try:
+            from app.scheduler import stop_scheduler
+            stop_scheduler()
+        except Exception:
+            pass
+    logger.info("🛑 JobScout v2.2 shutting down...")
 
 
 def _ensure_profile_from_env():
-    """Create a profile from environment variables if one doesn't exist."""
+    """Log profile status on startup."""
     try:
         settings = get_settings()
         db = Database()
         existing = db.get_profile_by_email(settings.user_email)
         if not existing:
-            logger.info(f"📧 No profile for {settings.user_email}. "
-                        f"Visit /setup to create your profile.")
+            logger.info(f"📧 No profile for {settings.user_email}. Visit the dashboard to create one.")
         else:
-            logger.info(f"📧 Profile found for {settings.user_email}: "
-                        f"{existing.qualification} | {existing.interests}")
+            logger.info(f"📧 Profile: {settings.user_email} | {existing.qualification} | Status: {existing.status}")
     except Exception as e:
-        logger.warning(f"Could not check profile on startup: {e}")
+        logger.warning(f"Startup profile check failed: {e}")
 
 
 app = FastAPI(
-    title="JobScout v2",
-    description="Personal Sarkari Naukri Job Alert Bot — Email Digest Edition",
-    version="2.1.0",
+    title="JobScout v2.2",
+    description="Personal Sarkari Naukri Job Alert Bot — Web Dashboard Edition",
+    version="2.2.0",
     lifespan=lifespan
 )
+
+# Mount static files (logo, etc.)
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 db = Database()
 
 
-# ── Health & Root ──
+# ══════════════════════════════════════════════════════════════
+#  DASHBOARD & HEALTH
+# ══════════════════════════════════════════════════════════════
 
-@app.get("/")
-async def root():
-    return {"status": "ok", "service": "JobScout v2", "version": "2.1.0"}
+@app.get("/", response_class=HTMLResponse)
+async def dashboard():
+    """Serve the interactive web dashboard."""
+    return HTMLResponse(content=DASHBOARD_HTML)
 
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "JobScout v2",
-        "env": get_settings().app_env,
-    }
+    return {"status": "healthy", "service": "JobScout v2.2", "env": get_settings().app_env}
 
 
-# ── Profile Setup (Web Form) ──
+# ══════════════════════════════════════════════════════════════
+#  PROFILE API
+# ══════════════════════════════════════════════════════════════
 
-INTEREST_OPTIONS = [
-    "PSU", "Banking", "Railways", "Defence", "IT/Software",
-    "SSC", "UPSC", "Teaching", "State Govt", "Judiciary", "Medical"
-]
-
-EXPERIENCE_OPTIONS = ["Fresher", "0-2 yrs", "2+ yrs"]
-
-
-@app.get("/setup", response_class=HTMLResponse)
-async def setup_form():
-    """Serve the profile setup HTML form."""
-    settings = get_settings()
-
-    # Check if profile exists
-    existing = db.get_profile_by_email(settings.user_email)
-    existing_msg = ""
-    if existing:
-        interests_str = ", ".join(existing.interests) if existing.interests else "None"
-        existing_msg = f"""
-        <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <strong>✅ Existing Profile Found</strong><br>
-            <span style="color: #555;">Email: {existing.email} | Qualification: {existing.qualification} | 
-            Interests: {interests_str} | Experience: {existing.experience_level} | Status: {existing.status}</span><br>
-            <small style="color: #777;">Submitting the form below will update your profile.</small>
-        </div>
-        """
-
-    # Build interest checkboxes
-    interest_checkboxes = ""
-    for i, opt in enumerate(INTEREST_OPTIONS):
-        emoji = ["🏭", "🏦", "🚂", "🎖️", "💻", "📊", "🏛️", "📚", "🏘️", "⚖️", "🏥"][i]
-        checked = ""
-        if existing and existing.interests and opt.lower() in [x.lower() for x in existing.interests]:
-            checked = "checked"
-        interest_checkboxes += f"""
-        <label style="display: inline-block; margin: 6px 10px; padding: 8px 14px; 
-               background: #f0f0f0; border-radius: 20px; cursor: pointer; font-size: 14px;
-               transition: background 0.2s;">
-            <input type="checkbox" name="interests" value="{opt}" {checked}
-                   style="margin-right: 6px;"> {emoji} {opt}
-        </label>
-        """
-
-    # Build experience radio buttons
-    experience_radios = ""
-    for opt in EXPERIENCE_OPTIONS:
-        checked = ""
-        if existing and existing.experience_level and opt.lower() == existing.experience_level.lower():
-            checked = "checked"
-        experience_radios += f"""
-        <label style="display: block; margin: 8px 0; padding: 10px 14px; 
-               background: #f0f0f0; border-radius: 8px; cursor: pointer;">
-            <input type="radio" name="experience" value="{opt}" {checked}
-                   style="margin-right: 8px;"> {opt}
-        </label>
-        """
-
-    qualification_val = existing.qualification if existing and existing.qualification else ""
-
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>JobScout — Profile Setup</title>
-        <style>
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body {{ 
-                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh; padding: 40px 20px;
-            }}
-            .container {{ 
-                max-width: 600px; margin: 0 auto; 
-                background: white; border-radius: 16px; 
-                padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            }}
-            h1 {{ color: #1a73e8; text-align: center; margin-bottom: 8px; font-size: 28px; }}
-            .subtitle {{ color: #666; text-align: center; margin-bottom: 30px; font-size: 14px; }}
-            .field {{ margin-bottom: 24px; }}
-            .field label {{ display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 15px; }}
-            input[type="text"], input[type="email"] {{ 
-                width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; 
-                border-radius: 8px; font-size: 15px; outline: none;
-                transition: border-color 0.2s;
-            }}
-            input[type="text"]:focus, input[type="email"]:focus {{ border-color: #1a73e8; }}
-            .btn {{ 
-                display: block; width: 100%; padding: 14px; 
-                background: #1a73e8; color: white; border: none; 
-                border-radius: 8px; font-size: 16px; font-weight: 600; 
-                cursor: pointer; transition: background 0.2s;
-                margin-top: 10px;
-            }}
-            .btn:hover {{ background: #1557b0; }}
-            .section-title {{ font-size: 13px; color: #888; text-transform: uppercase; 
-                             letter-spacing: 1px; margin-bottom: 12px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📋 JobScout Setup</h1>
-            <p class="subtitle">Configure your profile to receive nightly job digests via email</p>
-            
-            {existing_msg}
-
-            <form action="/setup" method="post">
-                <div class="field">
-                    <label>📧 Email Address</label>
-                    <input type="email" name="email" value="{settings.user_email}" 
-                           placeholder="your@email.com" required>
-                </div>
-
-                <div class="field">
-                    <label>📚 Qualification</label>
-                    <input type="text" name="qualification" value="{qualification_val}"
-                           placeholder="e.g., B.Tech, BSc, BCA, Law, MBA" required>
-                </div>
-
-                <div class="field">
-                    <label class="section-title">📋 Interests (Select sectors)</label>
-                    <div>{interest_checkboxes}</div>
-                </div>
-
-                <div class="field">
-                    <label class="section-title">💼 Experience Level</label>
-                    {experience_radios}
-                </div>
-
-                <button type="submit" class="btn">💾 Save Profile &amp; Start Receiving Digests</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
-
-
-@app.post("/setup")
-async def setup_profile(
-    email: str = Form(...),
-    qualification: str = Form(...),
-    interests: list = Form(default=[]),
-    experience: str = Form(default="Fresher"),
-):
-    """Handle profile setup form submission."""
-    email = email.strip().lower()
-    qualification = qualification.strip()
-    experience = experience.strip()
-
-    if not email or not qualification:
-        return HTMLResponse(
-            content="<h2>Error: Email and Qualification are required.</h2><a href='/setup'>Go back</a>",
-            status_code=400
-        )
-
-    # Filter valid interests
-    valid_interests = [i for i in interests if i in INTEREST_OPTIONS]
-    if not valid_interests:
-        valid_interests = INTEREST_OPTIONS  # Default to all if none selected
-
-    profile = db.upsert_profile(
-        email=email,
-        qualification=qualification,
-        interests=valid_interests,
-        experience_level=experience,
-    )
-
-    if profile:
-        interests_str = ", ".join(valid_interests)
-        html = f"""
-        <!DOCTYPE html>
-        <html><head><meta charset="UTF-8"><title>Profile Saved</title>
-        <style>
-            body {{ font-family: 'Segoe UI', sans-serif; background: #f0f7ff; 
-                   display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-            .card {{ background: white; border-radius: 16px; padding: 40px; max-width: 500px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }}
-            h1 {{ color: #0d652d; margin-bottom: 20px; }}
-            .detail {{ text-align: left; background: #f8f9fa; border-radius: 8px; 
-                      padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.8; }}
-            a {{ color: #1a73e8; text-decoration: none; font-weight: 600; }}
-        </style></head>
-        <body><div class="card">
-            <h1>✅ Profile Saved!</h1>
-            <p>You'll receive a nightly PDF digest at <b>10 PM IST</b> with matched government jobs.</p>
-            <div class="detail">
-                <b>📧 Email:</b> {email}<br>
-                <b>📚 Qualification:</b> {qualification}<br>
-                <b>📋 Interests:</b> {interests_str}<br>
-                <b>💼 Experience:</b> {experience}
-            </div>
-            <a href="/setup">✏️ Edit Profile</a> &nbsp;|&nbsp; <a href="/profile">📊 View Profile JSON</a>
-        </div></body></html>
-        """
-        return HTMLResponse(content=html)
-    else:
-        return HTMLResponse(
-            content="<h2>❌ Error saving profile. Check logs.</h2><a href='/setup'>Try again</a>",
-            status_code=500
-        )
-
-
-# ── Debug Endpoints ──
-
-@app.get("/profile")
+@app.get("/api/profile")
 async def get_profile():
-    """Debug endpoint to view current profile."""
+    """Get current user profile."""
     settings = get_settings()
     profile = db.get_profile_by_email(settings.user_email)
+    if not profile:
+        profile = db.get_first_active_profile()
     if profile:
         return JSONResponse(content=profile.model_dump(mode="json"))
-    return JSONResponse(content={"error": "No profile found"}, status_code=404)
+    return JSONResponse(content={"error": "No profile found. Use the dashboard to create one."}, status_code=404)
 
 
-@app.get("/digest-status")
+@app.post("/api/profile")
+async def save_profile(request: Request):
+    """Create or update user profile."""
+    try:
+        data = await request.json()
+        email = data.get("email", "").strip().lower()
+        qualification = data.get("qualification", "").strip()
+        interests = data.get("interests", [])
+        experience_level = data.get("experience_level", "Fresher").strip()
+
+        if not email or not qualification:
+            return JSONResponse(content={"error": "Email and qualification are required."}, status_code=400)
+        if not interests:
+            return JSONResponse(content={"error": "Select at least one interest."}, status_code=400)
+
+        profile = db.upsert_profile(
+            email=email,
+            qualification=qualification,
+            interests=interests,
+            experience_level=experience_level,
+        )
+
+        if profile:
+            return JSONResponse(content={"status": "ok", "message": "Profile saved successfully"})
+        else:
+            return JSONResponse(content={"error": "Database error saving profile"}, status_code=500)
+
+    except Exception as e:
+        logger.error(f"Profile save error: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/api/status")
+async def update_status(request: Request):
+    """Pause or resume notifications."""
+    try:
+        data = await request.json()
+        new_status = data.get("status", "active")
+        if new_status not in ("active", "paused"):
+            return JSONResponse(content={"error": "Status must be 'active' or 'paused'"}, status_code=400)
+
+        settings = get_settings()
+        success = db.update_profile(settings.user_email, {"status": new_status})
+        if success:
+            logger.info(f"📌 Profile status changed to: {new_status}")
+            return JSONResponse(content={"status": new_status})
+        return JSONResponse(content={"error": "Profile not found"}, status_code=404)
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+# ══════════════════════════════════════════════════════════════
+#  RESUME API
+# ══════════════════════════════════════════════════════════════
+
+@app.post("/api/resume")
+async def upload_resume(file: UploadFile = File(...)):
+    """Upload resume, parse with Gemini, update profile."""
+    try:
+        if file.size and file.size > 5 * 1024 * 1024:
+            return JSONResponse(content={"error": "File too large (max 5MB)"}, status_code=400)
+
+        content = await file.read()
+        filename = file.filename or "resume.pdf"
+        content_type = file.content_type or "application/pdf"
+
+        settings = get_settings()
+
+        # Upload to Supabase Storage
+        file_path = f"{settings.user_email}/{filename}"
+        resume_url = db.upload_resume(file_path, content, content_type)
+
+        # Extract text (basic for .txt, or store raw for PDFs)
+        resume_text = ""
+        if filename.lower().endswith(".txt"):
+            resume_text = content.decode("utf-8", errors="ignore")[:10000]
+        else:
+            # For PDF/DOC: store as-is, Gemini can't read binary
+            # We'll use the filename and any metadata
+            resume_text = f"Resume uploaded: {filename} ({len(content)} bytes)"
+
+        # Parse with Gemini if we have text
+        parsed = {}
+        if resume_text and len(resume_text) > 50:
+            try:
+                from app.extractor import JobExtractor
+                extractor = JobExtractor()
+                parsed = extractor.parse_resume(resume_text)
+            except Exception as e:
+                logger.warning(f"Resume parsing with Gemini failed: {e}")
+
+        # Update profile with resume data
+        updates = {"resume_url": resume_url}
+        if resume_text:
+            updates["resume_parsed_text"] = resume_text[:5000]
+        if parsed.get("qualification"):
+            updates["qualification"] = parsed["qualification"]
+        if parsed.get("experience_level"):
+            updates["experience_level"] = parsed["experience_level"]
+
+        db.update_profile(settings.user_email, updates)
+
+        return JSONResponse(content={
+            "status": "ok",
+            "message": "Resume uploaded and analyzed",
+            "parsed": parsed,
+            "url": resume_url,
+        })
+
+    except Exception as e:
+        logger.error(f"Resume upload error: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+# ══════════════════════════════════════════════════════════════
+#  STATS & HISTORY API
+# ══════════════════════════════════════════════════════════════
+
+@app.get("/api/stats")
+async def get_stats():
+    """Dashboard statistics."""
+    try:
+        pending = db.get_digest_count()
+        total_jobs = db.get_total_jobs_count()
+        digests_sent = db.get_digests_sent_count()
+        return {
+            "pending_today": pending,
+            "total_jobs": total_jobs,
+            "digests_sent": digests_sent,
+            "sources": 4,
+        }
+    except Exception as e:
+        return {"pending_today": 0, "total_jobs": 0, "digests_sent": 0, "sources": 4}
+
+
+@app.get("/api/digest-status")
 async def digest_status():
-    """Check how many jobs are queued for tonight's digest."""
+    """Check today's pending digest."""
     count = db.get_digest_count()
-    return {
-        "date": date.today().isoformat(),
-        "pending_jobs": count,
-        "status": "ready" if count > 0 else "empty",
-    }
+    return {"date": date.today().isoformat(), "pending_jobs": count, "status": "ready" if count > 0 else "empty"}
 
 
-@app.get("/trigger-digest")
+@app.get("/api/digest-history")
+async def digest_history():
+    """Get digest send history."""
+    try:
+        history = db.get_digest_history(limit=30)
+        return JSONResponse(content=history)
+    except Exception as e:
+        return JSONResponse(content=[], status_code=200)
+
+
+# ══════════════════════════════════════════════════════════════
+#  TRIGGER ACTIONS
+# ══════════════════════════════════════════════════════════════
+
+@app.get("/api/trigger-digest")
 async def trigger_digest():
-    """Manually trigger the nightly digest (for testing/debugging)."""
+    """Manually trigger digest email (for testing)."""
     try:
         from app.pdf_generator import PDFGenerator
         from app.brevo_mailer import BrevoMailer
 
         settings = get_settings()
         profile = db.get_profile_by_email(settings.user_email)
-
         if not profile:
-            return JSONResponse(
-                content={"error": "No profile found. Visit /setup first."},
-                status_code=404
-            )
+            return JSONResponse(content={"error": "No profile found."}, status_code=404)
 
         jobs = db.get_pending_digest_jobs()
         pdf_gen = PDFGenerator()
@@ -322,23 +290,33 @@ async def trigger_digest():
 
         mailer = BrevoMailer()
         success = mailer.send_digest_email(
-            to_email=settings.user_email,
+            to_email=profile.email or settings.user_email,
             pdf_bytes=pdf_bytes,
             job_count=len(jobs),
         )
 
         if success:
             db.mark_digest_sent()
-            return {"status": "sent", "jobs": len(jobs), "email": settings.user_email}
+            db.record_digest_history(len(jobs), "manual")
+            return {"status": "sent", "jobs": len(jobs), "email": profile.email or settings.user_email}
         else:
-            return JSONResponse(
-                content={"error": "Email send failed. Check Brevo API key and logs."},
-                status_code=500
-            )
+            return JSONResponse(content={"error": "Email send failed. Check Brevo API key."}, status_code=500)
 
     except Exception as e:
         logger.error(f"Manual digest trigger failed: {e}")
-        return JSONResponse(
-            content={"error": str(e)},
-            status_code=500
-        )
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/trigger-scrape")
+async def trigger_scrape():
+    """Manually trigger scraper in background thread."""
+    def _run_scraper():
+        try:
+            from cron.scraper_job import run_scraper_job
+            run_scraper_job()
+        except Exception as e:
+            logger.error(f"Manual scrape error: {e}")
+
+    thread = threading.Thread(target=_run_scraper, daemon=True)
+    thread.start()
+    return {"status": "started", "message": "Scraper running in background"}
