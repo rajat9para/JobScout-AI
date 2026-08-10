@@ -27,6 +27,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+scrape_lock = threading.Lock()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -285,6 +287,9 @@ async def trigger_digest():
             return JSONResponse(content={"error": "No profile found."}, status_code=404)
 
         jobs = db.get_pending_digest_jobs()
+        if not jobs:
+            return {"status": "skipped", "message": "No pending jobs to digest", "jobs": 0, "email": profile.email or settings.user_email}
+            
         pdf_gen = PDFGenerator()
         pdf_bytes = pdf_gen.generate(jobs)
 
@@ -310,13 +315,63 @@ async def trigger_digest():
 @app.get("/api/trigger-scrape")
 async def trigger_scrape():
     """Manually trigger scraper in background thread."""
+    if not scrape_lock.acquire(blocking=False):
+        return JSONResponse(content={"error": "A scrape is already in progress. Please wait."}, status_code=429)
+
     def _run_scraper():
         try:
             from cron.scraper_job import run_scraper_job
             run_scraper_job()
         except Exception as e:
             logger.error(f"Manual scrape error: {e}")
+        finally:
+            scrape_lock.release()
 
     thread = threading.Thread(target=_run_scraper, daemon=True)
     thread.start()
     return {"status": "started", "message": "Scraper running in background"}
+
+
+@app.get("/api/test-email")
+async def test_email(email: Optional[str] = None):
+    """Send a test email to verify Brevo mail service is working."""
+    try:
+        settings = get_settings()
+        user_email = email or settings.user_email
+
+        if not email:
+            profile = db.get_profile_by_email(user_email)
+            if profile and profile.email:
+                user_email = profile.email
+
+        from app.brevo_mailer import BrevoMailer
+        mailer = BrevoMailer()
+        success = mailer.send_test_email(to_email=user_email)
+
+        if success:
+            return {"status": "sent", "email": user_email, "message": "Test email sent! Check your inbox."}
+        else:
+            return JSONResponse(content={"error": "Email send failed. Check Brevo API key and sender verification."}, status_code=500)
+
+    except Exception as e:
+        logger.error(f"Test email failed: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/scheduler-status")
+async def scheduler_status():
+    """Check if built-in scheduler is running and list next run times."""
+    try:
+        from app.scheduler import scheduler
+        if not scheduler.running:
+            return {"running": False, "jobs": []}
+        jobs = []
+        for job in scheduler.get_jobs():
+            jobs.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": str(job.next_run_time) if job.next_run_time else "N/A",
+            })
+        return {"running": True, "jobs": jobs}
+    except Exception as e:
+        return {"running": False, "error": str(e)}

@@ -307,6 +307,7 @@ class Database:
                 .select("id", count="exact")
                 .eq("digest_date", target_date)
                 .eq("sent", False)
+                .limit(1)
                 .execute()
             )
             return result.count if result.count is not None else 0
@@ -338,7 +339,7 @@ class Database:
     def get_total_jobs_count(self) -> int:
         """Get total number of scraped jobs."""
         def _count():
-            result = self.client.table("jobs").select("id", count="exact").execute()
+            result = self.client.table("jobs").select("id", count="exact").limit(1).execute()
             return result.count if result.count is not None else 0
         result = self._retry(_count)
         return result if result is not None else 0
@@ -349,6 +350,7 @@ class Database:
             result = (
                 self.client.table("digest_history")
                 .select("id", count="exact")
+                .limit(1)
                 .execute()
             )
             return result.count if result.count is not None else 0
