@@ -32,3 +32,4 @@ reportlab>=4.2.0
 
 # Built-in Scheduler (runs cron jobs inside web service)
 apscheduler>=3.10.0
+pytz>=2024.1

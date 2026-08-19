@@ -3,6 +3,7 @@
 Uses Google Gemini 1.5 Flash (free tier: 15 RPM, 1M tokens/day).
 Handles rate limiting with automatic retry and backoff.
 """
+import hashlib
 import json
 import logging
 import re

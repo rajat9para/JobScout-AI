@@ -387,17 +387,62 @@ DASHBOARD_HTML = """
         .spin { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: sp 0.5s linear infinite; display: inline-block; vertical-align: middle; }
         @keyframes sp { to { transform: rotate(360deg); } }
 
+        /* ═══ Send PDF Report Button (Header) ═══ */
+        .btn-send-report {
+            padding: 10px 22px; border-radius: 50px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            border: none; font-family: inherit;
+            display: inline-flex; align-items: center; gap: 8px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), 0 4px 16px rgba(5, 150, 105, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: reportGlow 3s ease-in-out infinite alternate;
+            letter-spacing: 0.3px;
+            position: relative; overflow: hidden;
+            white-space: nowrap;
+        }
+        .btn-send-report:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.6), 0 8px 28px rgba(5, 150, 105, 0.4);
+        }
+        .btn-send-report:active { transform: translateY(0) scale(0.97); }
+        .btn-send-report::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+        .btn-send-report:hover::before { left: 100%; }
+        .btn-send-report.sending {
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            animation: none;
+            pointer-events: none;
+        }
+        @keyframes reportGlow {
+            0% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), 0 4px 16px rgba(5, 150, 105, 0.2); }
+            100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.5), 0 4px 20px rgba(5, 150, 105, 0.35); }
+        }
+
+        /* ═══ Last Updated ═══ */
+        .last-updated {
+            text-align: center; font-size: 11px; color: var(--text-muted);
+            margin-bottom: 16px; letter-spacing: 0.5px;
+        }
+
         /* ═══ Responsive ═══ */
         @media (max-width: 768px) {
             .stats { grid-template-columns: repeat(2, 1fr); }
             .tab-bar { flex-wrap: wrap; }
             .sched-grid, .action-grid { grid-template-columns: 1fr; }
-            .header { padding: 12px 16px; }
+            .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
             .main { padding: 16px 12px 60px; }
+            .btn-send-report { font-size: 12px; padding: 8px 16px; }
         }
         @media (max-width: 480px) {
             .stats { grid-template-columns: 1fr 1fr; }
             .stat-val { font-size: 28px; }
+            .btn-send-report span.btn-label { display: none; }
         }
     </style>
 </head>
@@ -411,6 +456,9 @@ DASHBOARD_HTML = """
         <div><div class="brand"><span>JobScout</span></div><div class="version">v2.2 • Command Center</div></div>
     </div>
     <div class="header-right">
+        <button class="btn-send-report" id="btnReport" onclick="sendReport(this)">
+            📧 <span class="btn-label">Send PDF Report</span>
+        </button>
         <div id="pill" class="status-pill active" onclick="toggleStatus()"><span class="dot"></span><span id="pillTxt">Active</span></div>
     </div>
 </header>
@@ -424,6 +472,7 @@ DASHBOARD_HTML = """
         <div class="stat"><div class="stat-val" id="sD">—</div><div class="stat-lbl">Digests Sent</div></div>
         <div class="stat"><div class="stat-val" id="sS">4</div><div class="stat-lbl">Job Sources</div></div>
     </div>
+    <div class="last-updated" id="lastUpdated"></div>
 
     <!-- Tabs -->
     <div class="tab-bar">
@@ -468,6 +517,10 @@ DASHBOARD_HTML = """
         <div class="glass">
             <div class="glass-title">🔔 Deadline Reminders</div>
             <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">Automatic reminders at <strong>3 days</strong>, <strong>1 day</strong>, and <strong>last day</strong> of application deadlines.</p>
+        </div>
+        <div class="glass">
+            <div class="glass-title">💓 Database Keep-Alive</div>
+            <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">Supabase free-tier databases sleep after 7 days of inactivity. JobScout automatically <strong>pings all 3 tables every 8 hours</strong> (3× daily) to keep your database alive 24/7.</p>
         </div>
         <div class="glass">
             <div class="glass-title">⚙️ Scheduler Status</div>
@@ -547,7 +600,7 @@ const INTERESTS=[
 const EXPS=["Fresher","0-2 yrs","2+ yrs"];
 let selInt=[],selExp="Fresher",curSt="active";
 
-document.addEventListener("DOMContentLoaded",()=>{renderChips();renderExps();loadProfile();loadStats();loadScheduler();});
+document.addEventListener("DOMContentLoaded",()=>{renderChips();renderExps();loadProfile();loadStats();loadScheduler();updateTimestamp();});
 
 function tab(id,el){
     document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("on"));
@@ -601,7 +654,14 @@ async function loadStats(){
         document.getElementById("sP").textContent=s.pending_today??0;
         document.getElementById("sT").textContent=s.total_jobs??"—";
         document.getElementById("sD").textContent=s.digests_sent??0;
+        updateTimestamp();
     }catch(e){}
+}
+function updateTimestamp(){
+    const now=new Date();
+    const ts=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true,day:'2-digit',month:'short'});
+    const el=document.getElementById('lastUpdated');
+    if(el) el.textContent='Last refreshed: '+ts;
 }
 async function loadHistory(){
     try{const r=await fetch("/api/digest-history");
@@ -673,9 +733,9 @@ async function triggerDigest(card){
     try{const r=await fetch("/api/trigger-digest");
         if(r.ok){
             const d=await safeJson(r);
-            if(d.message) toast(d.message, "ok");
-            else toast(`Digest sent! ${d.jobs||0} jobs emailed 📧`,"ok");
-            loadHistory();
+            if(d.status==="skipped") toast(d.message||"No pending jobs to digest", "ok");
+            else toast(`Digest sent! ${d.jobs||0} jobs emailed to ${d.email||''} 📧`,"ok");
+            loadHistory();loadStats();
         }
         else{
             const ct=r.headers.get("content-type");
@@ -684,6 +744,30 @@ async function triggerDigest(card){
         }
     }catch(e){toast("Network error","err");}
     t.innerHTML=orig;
+}
+async function sendReport(btn){
+    btn.classList.add('sending');
+    const origHTML=btn.innerHTML;
+    btn.innerHTML='<span class="spin"></span> <span class="btn-label">Sending...</span>';
+    try{const r=await fetch("/api/trigger-digest");
+        if(r.ok){
+            const d=await safeJson(r);
+            if(d.status==="skipped"){
+                toast(d.message||"No pending jobs — digest queue is empty","ok");
+                btn.innerHTML='✅ <span class="btn-label">No Pending Jobs</span>';
+            } else {
+                toast(`PDF Report sent! ${d.jobs||0} jobs emailed to ${d.email||''} 📧`,"ok");
+                btn.innerHTML='✅ <span class="btn-label">Report Sent!</span>';
+            }
+            loadStats();loadHistory();
+        } else {
+            const ct=r.headers.get("content-type");
+            if(ct&&ct.includes("application/json")){const d=await r.json();toast(d.error||"Send failed","err");}
+            else toast("Server error sending report","err");
+            btn.innerHTML='❌ <span class="btn-label">Failed</span>';
+        }
+    }catch(e){toast("Network error","err");btn.innerHTML='❌ <span class="btn-label">Error</span>';}
+    setTimeout(()=>{btn.innerHTML=origHTML;btn.classList.remove('sending');},3000);
 }
 async function triggerScrape(card){
     const t=document.getElementById("actScrape");

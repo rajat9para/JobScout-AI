@@ -5,12 +5,14 @@ No separate Render cron services needed. This uses APScheduler to run:
   - Morning Digest:   10:00 AM IST daily (4:30 AM UTC)
   - Evening Digest:    6:00 PM IST daily (12:30 PM UTC)
   - Deadline Reminders: 8:00 AM IST daily (2:30 AM UTC)
+  - DB Keep-Alive:    Every 8 hours (prevents Supabase free-tier sleep)
 
 All jobs run in background threads so the FastAPI server stays responsive.
 """
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 import pytz
 
 logger = logging.getLogger("jobscout.scheduler")
@@ -55,6 +57,32 @@ def _run_reminders():
         run_reminder_job()
     except Exception as e:
         logger.error(f"Reminder job failed: {e}")
+
+
+def _run_db_keepalive():
+    """Ping Supabase database to prevent free-tier sleep.
+
+    Supabase pauses inactive databases after 7 days on the free plan.
+    This runs every 8 hours (3 times/day) to keep the database alive
+    by executing a lightweight SELECT query on the profiles table.
+    """
+    try:
+        from app.database import Database
+        db = Database()
+
+        # Lightweight query — just count profiles
+        result = db.client.table("profiles").select("id", count="exact").limit(1).execute()
+        count = result.count if result.count is not None else 0
+
+        # Also touch digest_history to keep it warm
+        db.client.table("digest_history").select("id", count="exact").limit(1).execute()
+
+        # And touch jobs table
+        db.client.table("jobs").select("id", count="exact").limit(1).execute()
+
+        logger.info(f"💓 DB keep-alive OK — {count} profile(s), all tables responsive")
+    except Exception as e:
+        logger.error(f"💔 DB keep-alive FAILED: {e}")
 
 
 def start_scheduler():
@@ -103,14 +131,31 @@ def start_scheduler():
         misfire_grace_time=600,
     )
 
+    # ── DB Keep-Alive: Every 8 hours (3x daily) ──
+    scheduler.add_job(
+        _run_db_keepalive,
+        IntervalTrigger(hours=8, timezone=IST),
+        id="db_keepalive",
+        name="Supabase Keep-Alive (Every 8h)",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
     scheduler.start()
 
+    # Run keep-alive immediately on startup
+    try:
+        _run_db_keepalive()
+    except Exception:
+        pass
+
     logger.info("=" * 50)
-    logger.info("📅 Scheduler started with 4 jobs:")
+    logger.info("📅 Scheduler started with 5 jobs:")
     logger.info("   🔍 Scraper        → Every hour at :05")
     logger.info("   🌅 Morning Digest → 10:00 AM IST")
     logger.info("   🌇 Evening Digest →  6:00 PM IST")
     logger.info("   🔔 Reminders      →  8:00 AM IST")
+    logger.info("   💓 DB Keep-Alive  →  Every 8 hours")
     logger.info("=" * 50)
 
 
@@ -119,3 +164,4 @@ def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("📅 Scheduler stopped")
+

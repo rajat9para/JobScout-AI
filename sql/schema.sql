@@ -104,6 +104,10 @@ CREATE POLICY "service_full_access_alerts" ON sent_alerts FOR ALL USING (true);
 CREATE POLICY "service_full_access_reminders" ON exam_reminders FOR ALL USING (true);
 CREATE POLICY "service_full_access_digest" ON daily_digest FOR ALL USING (true);
 
+-- Enable RLS on digest_history
+ALTER TABLE digest_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_full_access_digest_history" ON digest_history FOR ALL USING (true);
+
 -- ── Auto-update Trigger ──
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
