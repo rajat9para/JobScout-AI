@@ -65,7 +65,8 @@ class JobExtractor:
             logger.debug(f"[{source}] Text too short, skipping extraction")
             return []
 
-        prompt = EXTRACTION_PROMPT.format(source=source, text=raw_text[:15000])
+        # Limit input to 8K chars so Gemini response fits in output tokens
+        prompt = EXTRACTION_PROMPT.format(source=source, text=raw_text[:8000])
 
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -73,7 +74,7 @@ class JobExtractor:
                     prompt,
                     generation_config=genai.GenerationConfig(
                         temperature=0.1,
-                        max_output_tokens=4000,
+                        max_output_tokens=8192,
                     )
                 )
 
@@ -132,31 +133,55 @@ JSON output:"""
             return {}
 
     def _parse_response(self, content: str, source: str, raw_text: str) -> List[Job]:
-        """Parse Gemini's JSON response into Job objects."""
-        # Extract JSON array
-        json_match = re.search(r'\[.*?\]', content, re.DOTALL)
-        if not json_match:
-            # Try without brackets — maybe pure JSON
-            if content.startswith("{"):
-                json_str = f"[{content}]"
-            else:
-                json_str = content
-        else:
-            json_str = json_match.group(0)
+        """Parse Gemini's JSON response into Job objects.
 
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            logger.warning(f"[{source}] JSON parse failed: {e}. Raw: {content[:200]}")
-            return []
+        Handles truncated JSON gracefully by extracting individual
+        complete JSON objects when the full array is malformed.
+        """
+        # Try 1: Parse the full content as JSON array (greedy match)
+        json_match = re.search(r'\[.*\]', content, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(0))
+                if isinstance(data, list):
+                    return self._build_jobs(data, source, raw_text)
+            except json.JSONDecodeError:
+                pass
 
-        if not isinstance(data, list):
-            logger.warning(f"[{source}] Expected array, got {type(data)}")
-            return []
+        # Try 2: Parse as single object
+        if content.strip().startswith("{"):
+            try:
+                data = json.loads(f"[{content}]")
+                if isinstance(data, list):
+                    return self._build_jobs(data, source, raw_text)
+            except json.JSONDecodeError:
+                pass
 
+        # Try 3: Extract individual complete JSON objects from truncated response
+        objects = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', content, re.DOTALL)
+        data = []
+        for obj_str in objects:
+            try:
+                obj = json.loads(obj_str)
+                if isinstance(obj, dict) and obj.get("title"):
+                    data.append(obj)
+            except json.JSONDecodeError:
+                continue
+
+        if data:
+            logger.info(f"[{source}] Recovered {len(data)} jobs from truncated JSON")
+            return self._build_jobs(data, source, raw_text)
+
+        logger.warning(f"[{source}] Could not parse any JSON. Raw: {content[:300]}")
+        return []
+
+    def _build_jobs(self, data: list, source: str, raw_text: str) -> List[Job]:
+        """Convert parsed JSON objects into Job model instances."""
         jobs = []
         for item in data:
             if not isinstance(item, dict):
+                continue
+            if not item.get("title"):
                 continue
 
             # Build dedup hash

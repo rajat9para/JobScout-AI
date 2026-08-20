@@ -1,18 +1,21 @@
-"""PDF digest job — runs twice daily on Render Cron.
+"""PDF digest job — runs twice daily.
 
 Schedule:
-  Morning:  10:00 AM IST (4:30 AM UTC)  → python cron/nightly_digest_job.py --type morning
-  Evening:   6:00 PM IST (12:30 PM UTC) → python cron/nightly_digest_job.py --type evening
+  Morning:  10:00 AM IST  → run_digest("morning")
+  Evening:   6:00 PM IST  → run_digest("evening")
 
 Pipeline:
   1. Fetch user profile
-  2. Query daily_digest table for un-sent matched jobs
-  3. Generate professional PDF with all job descriptions
-  4. Email the PDF as attachment via Brevo
-  5. Mark digest entries as sent
-  6. Record in digest_history for dashboard tracking
+  2. 3-tier job fetch strategy:
+     a) Today's pending digest queue
+     b) ALL unsent backlog entries from any date
+     c) FALLBACK: Last 15 days of jobs from jobs table (profile-filtered)
+  3. Group jobs by date (recent first)
+  4. Generate professional PDF with date-grouped layout
+  5. Email the PDF as attachment via Brevo
+  6. Mark digest entries as sent
+  7. Record in digest_history for dashboard tracking
 """
-import argparse
 import logging
 import sys
 import os
@@ -24,6 +27,7 @@ from app.config import get_settings
 from app.database import Database
 from app.pdf_generator import PDFGenerator
 from app.brevo_mailer import BrevoMailer
+from app.matcher import JobMatcher
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,10 +76,42 @@ def run_digest(digest_type: str = "scheduled"):
     user_email = profile.email or settings.user_email
     logger.info(f"📧 Preparing {digest_type} digest for: {user_email}")
 
-    # ── Step 2: Fetch pending digest jobs ──
+    # ── Step 2: 3-tier job fetch strategy ──
+    jobs = []
+    source = "empty"
+
+    # Strategy 1: Today's pending digest queue
     jobs = db.get_pending_digest_jobs(today)
+    source = "queued"
+    logger.info(f"📋 Strategy 1 (today's queue): {len(jobs)} jobs")
+
+    # Strategy 2: ALL unsent backlog entries from any date
+    if not jobs:
+        jobs = db.get_all_pending_digest_jobs()
+        source = "backlog"
+        logger.info(f"📋 Strategy 2 (unsent backlog): {len(jobs)} jobs")
+
+    # Strategy 3: Last 15 days of jobs directly from DB
+    if not jobs:
+        logger.info("📋 Strategy 3: Fetching last 15 days of jobs...")
+        all_recent = db.get_jobs_last_n_days(days=15)
+        logger.info(f"📋 Found {len(all_recent)} total jobs in last 15 days")
+
+        # Filter by profile match
+        if all_recent:
+            matcher = JobMatcher()
+            jobs = [j for j in all_recent if matcher.match(profile, j)]
+            logger.info(f"📋 After profile filter: {len(jobs)} matching jobs")
+
+            # If still no matches, include ALL recent jobs
+            if not jobs:
+                jobs = all_recent
+                logger.warning(f"⚠️ No profile matches — including all {len(jobs)} recent jobs")
+
+        source = "15day_window"
+
     job_count = len(jobs)
-    logger.info(f"📋 Found {job_count} jobs in digest queue")
+    logger.info(f"📋 Final job count for digest: {job_count} (source: {source})")
 
     # ── Step 3: Generate PDF ──
     try:
@@ -101,9 +137,10 @@ def run_digest(digest_type: str = "scheduled"):
 
     # ── Step 5: Mark as sent + record history ──
     if success:
-        db.mark_digest_sent(today)
+        if source in ("queued", "backlog"):
+            db.mark_digest_sent(today)
         db.record_digest_history(job_count, digest_type)
-        logger.info(f"✅ {label} digest sent to {user_email} with {job_count} jobs")
+        logger.info(f"✅ {label} digest sent to {user_email} with {job_count} jobs (source: {source})")
     else:
         logger.error(f"❌ Digest email failed. Jobs remain in queue for next run.")
 
@@ -119,14 +156,14 @@ def _send_error_notification(mailer, to_email, settings, error_msg):
         email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": to_email}],
             sender={"name": settings.sender_name, "email": settings.sender_email},
-            subject="⚠️ JobScout Digest — Error",
+            subject="⚠️ JobScout-AI — Digest Error",
             html_content=f"""
             <html><body style="font-family: sans-serif; padding: 20px;">
                 <h2 style="color: #c5221f;">⚠️ Digest Generation Error</h2>
                 <p>The digest PDF could not be generated.</p>
                 <p style="color: #666;">Error: {error_msg}</p>
                 <p>Your jobs are safe in the queue and will be included in the next digest.</p>
-                <p style="font-size: 11px; color: #999;">— JobScout Bot</p>
+                <p style="font-size: 11px; color: #999;">— JobScout-AI</p>
             </body></html>
             """,
         )
@@ -136,7 +173,8 @@ def _send_error_notification(mailer, to_email, settings, error_msg):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="JobScout PDF Digest")
+    import argparse
+    parser = argparse.ArgumentParser(description="JobScout-AI PDF Digest")
     parser.add_argument("--type", default="scheduled",
                         choices=["morning", "evening", "manual", "scheduled"],
                         help="Type of digest: morning, evening, manual, or scheduled")

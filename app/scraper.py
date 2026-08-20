@@ -2,10 +2,19 @@
 
 Design: Extract large text blocks and pass to Gemini for structured extraction.
 This is resilient to site layout changes — no brittle CSS selectors.
+
+Active Sources (verified working):
+  - SarkariResult.com     ✅ 161K+ chars of job data
+  - FreeJobAlert.com      ✅ 249K+ chars of job data
+  - SarkariExam.com       ✅ Government exam portal
+  - RojgarResult.com      ✅ Sarkari Naukri aggregator
+
+Removed (broken/empty):
+  - ncs.gov.in            ❌ Returns 404
+  - employmentnews.gov.in ❌ Nearly empty pages (~2.9K chars)
 """
 import logging
 import time
-import hashlib
 from abc import ABC, abstractmethod
 from typing import List, Optional
 import requests
@@ -13,12 +22,27 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_HEADERS = {
-    "User-Agent": (
+# Multiple User-Agents for retry on block
+USER_AGENTS = [
+    (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+        "Version/17.4 Safari/605.1.15"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
+]
+
+DEFAULT_HEADERS = {
+    "User-Agent": USER_AGENTS[0],
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
     "Accept-Encoding": "gzip, deflate, br",
@@ -26,7 +50,7 @@ DEFAULT_HEADERS = {
     "Connection": "keep-alive",
 }
 
-REQUEST_TIMEOUT = 30
+REQUEST_TIMEOUT = 45  # Increased for slow government sites
 DELAY_BETWEEN_REQUESTS = 3  # Respectful delay
 
 
@@ -53,15 +77,30 @@ class BaseScraper(ABC):
         pass
 
     def _fetch(self, url: str) -> Optional[str]:
-        try:
-            logger.info(f"[{self.source_name}] Fetching: {url}")
-            response = self.session.get(url, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-            time.sleep(DELAY_BETWEEN_REQUESTS)
-            return response.text
-        except requests.RequestException as e:
-            logger.error(f"[{self.source_name}] Fetch failed {url}: {e}")
-            return None
+        """Fetch URL with automatic retry using different User-Agents."""
+        for attempt, ua in enumerate(USER_AGENTS):
+            try:
+                logger.info(f"[{self.source_name}] Fetching: {url} (attempt {attempt + 1})")
+                self.session.headers["User-Agent"] = ua
+                response = self.session.get(url, timeout=REQUEST_TIMEOUT)
+                response.raise_for_status()
+
+                # Check if we got meaningful content (not just a block page)
+                if len(response.text) < 500:
+                    logger.warning(f"[{self.source_name}] Response too short ({len(response.text)} chars), retrying...")
+                    time.sleep(2)
+                    continue
+
+                time.sleep(DELAY_BETWEEN_REQUESTS)
+                logger.info(f"[{self.source_name}] Fetched {len(response.text)} chars from {url}")
+                return response.text
+            except requests.RequestException as e:
+                logger.warning(f"[{self.source_name}] Fetch attempt {attempt + 1} failed {url}: {e}")
+                if attempt < len(USER_AGENTS) - 1:
+                    time.sleep(2)
+
+        logger.error(f"[{self.source_name}] All fetch attempts failed for {url}")
+        return None
 
     def _clean_html(self, html: str) -> str:
         soup = BeautifulSoup(html, "html.parser")
@@ -90,28 +129,6 @@ class BaseScraper(ABC):
         if current_chunk:
             chunks.append("\n".join(current_chunk))
         return chunks
-
-
-class NCSscraper(BaseScraper):
-    """National Career Service — official government portal."""
-
-    @property
-    def source_name(self) -> str: return "ncs.gov.in"
-    @property
-    def base_url(self) -> str: return "https://ncs.gov.in"
-
-    def scrape(self) -> List[str]:
-        urls = [
-            "https://ncs.gov.in/job-search",
-            "https://ncs.gov.in/individual-job-seeker",
-        ]
-        all_chunks = []
-        for url in urls:
-            html = self._fetch(url)
-            if html:
-                text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text))
-        return all_chunks
 
 
 class SarkariResultScraper(BaseScraper):
@@ -147,7 +164,7 @@ class FreeJobAlertScraper(BaseScraper):
     def scrape(self) -> List[str]:
         urls = [
             "https://www.freejobalert.com/government-jobs/",
-            "https://www.freejobalert.com/",
+            "https://www.freejobalert.com/latest-notifications/",
         ]
         all_chunks = []
         for url in urls:
@@ -158,33 +175,54 @@ class FreeJobAlertScraper(BaseScraper):
         return all_chunks
 
 
-class EmploymentNewsScraper(BaseScraper):
-    """Employment News — official weekly gazette."""
+class SarkariExamScraper(BaseScraper):
+    """SarkariExam.com — government exam and job notifications."""
 
     @property
-    def source_name(self) -> str: return "employmentnews.gov.in"
+    def source_name(self) -> str: return "sarkariexam.com"
     @property
-    def base_url(self) -> str: return "https://employmentnews.gov.in"
+    def base_url(self) -> str: return "https://www.sarkariexam.com"
 
     def scrape(self) -> List[str]:
         urls = [
-            "https://employmentnews.gov.in/",
-            "https://employmentnews.gov.in/latest-jobs",
+            "https://www.sarkariexam.com/",
+            "https://www.sarkariexam.com/latest-jobs",
         ]
         all_chunks = []
         for url in urls:
             html = self._fetch(url)
             if html:
                 text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text))
+                all_chunks.extend(self._chunk_text(text, max_chars=15000))
+        return all_chunks
+
+
+class RojgarResultScraper(BaseScraper):
+    """RojgarResult.com — Sarkari Naukri aggregator."""
+
+    @property
+    def source_name(self) -> str: return "rojgarresult.com"
+    @property
+    def base_url(self) -> str: return "https://www.rojgarresult.com"
+
+    def scrape(self) -> List[str]:
+        urls = [
+            "https://www.rojgarresult.com/",
+        ]
+        all_chunks = []
+        for url in urls:
+            html = self._fetch(url)
+            if html:
+                text = self._clean_html(html)
+                all_chunks.extend(self._chunk_text(text, max_chars=15000))
         return all_chunks
 
 
 def get_all_scrapers() -> List[BaseScraper]:
     """Factory: returns all configured scrapers."""
     return [
-        NCSscraper(),
         SarkariResultScraper(),
         FreeJobAlertScraper(),
-        EmploymentNewsScraper(),
+        SarkariExamScraper(),
+        RojgarResultScraper(),
     ]

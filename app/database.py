@@ -433,3 +433,72 @@ class Database:
         except Exception:
             return []
 
+    # ── 15-Day Job Window ──
+
+    def get_jobs_last_n_days(self, days: int = 15) -> List[Job]:
+        """Fetch all jobs scraped in the last N days, sorted by most recent first.
+
+        This is the primary data source for the digest email — ensures
+        the user always sees a 15-day rolling window of jobs regardless
+        of the daily_digest queue state.
+        """
+        def _fetch():
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+            result = (
+                self.client.table("jobs")
+                .select("*")
+                .gte("scraped_at", cutoff)
+                .order("scraped_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+            return [Job(**row) for row in result.data]
+
+        result = self._retry(_fetch)
+        return result if result is not None else []
+
+    # ── Auto-Cleanup (30 days) ──
+
+    def cleanup_old_data(self, days: int = 30) -> dict:
+        """Delete data older than N days to prevent Supabase free storage fill-up.
+
+        Deletes:
+        - Jobs older than N days (CASCADE removes related sent_alerts,
+          exam_reminders, and daily_digest entries automatically)
+        - Old digest_history records older than N days
+
+        Returns dict with counts of deleted records.
+        """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        stats = {"jobs_deleted": 0, "digest_history_deleted": 0, "errors": []}
+
+        # Delete old jobs (CASCADE handles sent_alerts, exam_reminders, daily_digest)
+        try:
+            result = (
+                self.client.table("jobs")
+                .delete()
+                .lt("scraped_at", cutoff)
+                .execute()
+            )
+            stats["jobs_deleted"] = len(result.data) if result.data else 0
+            logger.info(f"🗑️ Cleaned up {stats['jobs_deleted']} old jobs (>{days} days)")
+        except Exception as e:
+            stats["errors"].append(f"jobs cleanup: {e}")
+            logger.error(f"Jobs cleanup failed: {e}")
+
+        # Delete old digest_history
+        try:
+            result = (
+                self.client.table("digest_history")
+                .delete()
+                .lt("created_at", cutoff)
+                .execute()
+            )
+            stats["digest_history_deleted"] = len(result.data) if result.data else 0
+            logger.info(f"🗑️ Cleaned up {stats['digest_history_deleted']} old digest history records")
+        except Exception as e:
+            stats["errors"].append(f"digest_history cleanup: {e}")
+            logger.error(f"Digest history cleanup failed: {e}")
+
+        return stats
+

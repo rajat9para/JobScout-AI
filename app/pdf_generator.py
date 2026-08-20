@@ -1,12 +1,16 @@
-"""Professional PDF generator for the nightly job digest.
+"""Professional PDF generator for the JobScout-AI daily report.
 
-Uses ReportLab to create a clean, branded PDF containing
-medium-length descriptions of all matched jobs for the day.
+Uses ReportLab to create a clean, branded PDF with:
+  - "JobScout-AI Daily Report" header
+  - Jobs grouped by date (recent first) with date section headings
+  - Clean professional cards for each job with key highlights
+  - Salary, qualification, experience, apply links prominently shown
 """
 import io
 import logging
-from datetime import date, datetime
-from typing import List
+from datetime import date, datetime, timedelta
+from typing import List, Dict
+from collections import defaultdict
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -17,130 +21,164 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     HRFlowable, PageBreak, KeepTogether
 )
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 
 from app.models import Job
 
 logger = logging.getLogger(__name__)
 
-# ── Color Palette ──
-BRAND_BLUE = colors.HexColor("#1a73e8")
-BRAND_DARK = colors.HexColor("#202124")
-BRAND_GRAY = colors.HexColor("#5f6368")
-BRAND_LIGHT_BG = colors.HexColor("#f8f9fa")
-BRAND_GREEN = colors.HexColor("#0d652d")
-BRAND_RED = colors.HexColor("#c5221f")
-BRAND_ORANGE = colors.HexColor("#e37400")
-DIVIDER_COLOR = colors.HexColor("#dadce0")
+# ── Color Palette — Professional Dark Blue Theme ──
+PRIMARY = colors.HexColor("#1B2A4A")       # Deep navy
+ACCENT = colors.HexColor("#3B82F6")        # Bright blue
+ACCENT_LIGHT = colors.HexColor("#60A5FA")  # Light blue
+SUCCESS = colors.HexColor("#10B981")       # Green
+WARNING = colors.HexColor("#F59E0B")       # Amber
+DANGER = colors.HexColor("#EF4444")        # Red
+TEXT_DARK = colors.HexColor("#1E293B")      # Slate 800
+TEXT_MED = colors.HexColor("#475569")       # Slate 600
+TEXT_LIGHT = colors.HexColor("#94A3B8")     # Slate 400
+BG_LIGHT = colors.HexColor("#F1F5F9")      # Slate 100
+BG_CARD = colors.HexColor("#F8FAFC")       # Slate 50
+BORDER = colors.HexColor("#E2E8F0")        # Slate 200
+DIVIDER = colors.HexColor("#CBD5E1")       # Slate 300
+WHITE = colors.HexColor("#FFFFFF")
 
 
 class PDFGenerator:
-    """Generates a professional PDF digest of matched government jobs."""
+    """Generates a professional PDF report of government jobs."""
 
     def __init__(self):
         self.styles = getSampleStyleSheet()
         self._register_custom_styles()
 
     def _register_custom_styles(self):
-        """Register custom paragraph styles for the digest PDF."""
-        # Title style for the PDF header
+        """Register custom paragraph styles."""
+        # Main report title
         self.styles.add(ParagraphStyle(
-            name="DigestTitle",
+            name="ReportTitle",
             parent=self.styles["Title"],
-            fontSize=22,
-            textColor=BRAND_BLUE,
-            spaceAfter=6 * mm,
+            fontSize=24,
+            fontName="Helvetica-Bold",
+            textColor=PRIMARY,
+            spaceAfter=2 * mm,
             alignment=TA_CENTER,
+            leading=30,
         ))
 
-        # Subtitle/date style
+        # Report subtitle / date
         self.styles.add(ParagraphStyle(
-            name="DigestSubtitle",
+            name="ReportSubtitle",
             parent=self.styles["Normal"],
             fontSize=11,
-            textColor=BRAND_GRAY,
+            textColor=TEXT_LIGHT,
             alignment=TA_CENTER,
-            spaceAfter=8 * mm,
+            spaceAfter=6 * mm,
         ))
 
-        # Job title style
+        # Date section heading (e.g., "August 20, 2026")
+        self.styles.add(ParagraphStyle(
+            name="DateHeading",
+            parent=self.styles["Heading2"],
+            fontSize=14,
+            fontName="Helvetica-Bold",
+            textColor=ACCENT,
+            spaceBefore=8 * mm,
+            spaceAfter=4 * mm,
+            leftIndent=0,
+            borderPadding=(4, 8, 4, 8),
+        ))
+
+        # Job title
         self.styles.add(ParagraphStyle(
             name="JobTitle",
-            parent=self.styles["Heading2"],
-            fontSize=13,
-            textColor=BRAND_DARK,
-            spaceBefore=4 * mm,
-            spaceAfter=2 * mm,
+            parent=self.styles["Heading3"],
+            fontSize=12,
+            fontName="Helvetica-Bold",
+            textColor=TEXT_DARK,
+            spaceBefore=2 * mm,
+            spaceAfter=1 * mm,
             leftIndent=0,
         ))
 
-        # Organization name
+        # Organization
         self.styles.add(ParagraphStyle(
             name="JobOrg",
             parent=self.styles["Normal"],
-            fontSize=11,
-            textColor=BRAND_BLUE,
+            fontSize=10,
+            fontName="Helvetica-Bold",
+            textColor=ACCENT,
             spaceAfter=2 * mm,
         ))
 
-        # Job field label (bold)
+        # Job detail field
         self.styles.add(ParagraphStyle(
-            name="FieldLabel",
+            name="JobField",
             parent=self.styles["Normal"],
             fontSize=9,
-            textColor=BRAND_GRAY,
-            spaceAfter=0.5 * mm,
+            textColor=TEXT_MED,
+            spaceAfter=1 * mm,
+            leading=13,
         ))
 
-        # Job field value
+        # Highlight field (salary, deadline)
         self.styles.add(ParagraphStyle(
-            name="FieldValue",
+            name="JobHighlight",
             parent=self.styles["Normal"],
-            fontSize=10,
-            textColor=BRAND_DARK,
-            spaceAfter=1.5 * mm,
+            fontSize=9,
+            fontName="Helvetica-Bold",
+            textColor=TEXT_DARK,
+            spaceAfter=1 * mm,
+            leading=13,
         ))
 
-        # Footer style
+        # Summary stat
+        self.styles.add(ParagraphStyle(
+            name="StatValue",
+            parent=self.styles["Normal"],
+            fontSize=20,
+            fontName="Helvetica-Bold",
+            textColor=ACCENT,
+            alignment=TA_CENTER,
+        ))
+
+        self.styles.add(ParagraphStyle(
+            name="StatLabel",
+            parent=self.styles["Normal"],
+            fontSize=8,
+            textColor=TEXT_LIGHT,
+            alignment=TA_CENTER,
+            spaceAfter=2 * mm,
+        ))
+
+        # Footer
         self.styles.add(ParagraphStyle(
             name="Footer",
             parent=self.styles["Normal"],
-            fontSize=8,
-            textColor=BRAND_GRAY,
+            fontSize=7,
+            textColor=TEXT_LIGHT,
             alignment=TA_CENTER,
         ))
 
-        # Summary stat style
+        # Empty state
         self.styles.add(ParagraphStyle(
-            name="SummaryStat",
-            parent=self.styles["Normal"],
-            fontSize=12,
-            textColor=BRAND_DARK,
-            alignment=TA_CENTER,
-            spaceAfter=3 * mm,
-        ))
-
-        # No jobs message
-        self.styles.add(ParagraphStyle(
-            name="NoJobs",
+            name="EmptyState",
             parent=self.styles["Normal"],
             fontSize=14,
-            textColor=BRAND_GRAY,
+            textColor=TEXT_LIGHT,
             alignment=TA_CENTER,
             spaceBefore=30 * mm,
         ))
 
+        # Source tag
+        self.styles.add(ParagraphStyle(
+            name="SourceTag",
+            parent=self.styles["Normal"],
+            fontSize=7,
+            textColor=TEXT_LIGHT,
+            spaceAfter=0,
+        ))
+
     def generate(self, jobs: List[Job], digest_date: date = None) -> bytes:
-        """Generate the digest PDF and return as bytes.
-
-        Args:
-            jobs: List of Job objects to include in the digest.
-            digest_date: The date for the digest header. Defaults to today.
-
-        Returns:
-            PDF file content as bytes.
-        """
+        """Generate the report PDF and return as bytes."""
         if digest_date is None:
             digest_date = date.today()
 
@@ -148,66 +186,107 @@ class PDFGenerator:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=18 * mm,
-            leftMargin=18 * mm,
-            topMargin=20 * mm,
-            bottomMargin=20 * mm,
-            title=f"JobScout Digest — {digest_date.strftime('%d %b %Y')}",
-            author="JobScout Bot",
-            subject="Daily Government Job Digest",
+            rightMargin=16 * mm,
+            leftMargin=16 * mm,
+            topMargin=18 * mm,
+            bottomMargin=18 * mm,
+            title=f"JobScout-AI Report — {digest_date.strftime('%d %b %Y')}",
+            author="JobScout-AI",
+            subject="Government Job Report",
         )
 
         story = []
 
         # ── Header ──
-        story.append(Paragraph("📋 JobScout — Daily Job Digest", self.styles["DigestTitle"]))
+        story.append(Paragraph("JobScout-AI", self.styles["ReportTitle"]))
+        story.append(Paragraph("Daily Government Job Report", self.styles["ReportSubtitle"]))
         story.append(Paragraph(
-            f"Generated on {digest_date.strftime('%A, %d %B %Y')} • "
-            f"{len(jobs)} matching job{'s' if len(jobs) != 1 else ''} found",
-            self.styles["DigestSubtitle"]
-        ))
-        story.append(HRFlowable(
-            width="100%", thickness=1.5, color=BRAND_BLUE,
-            spaceBefore=2 * mm, spaceAfter=6 * mm
+            f"{digest_date.strftime('%A, %d %B %Y')}",
+            self.styles["ReportSubtitle"]
         ))
 
-        # ── Empty state ──
+        # Accent line
+        story.append(HRFlowable(
+            width="100%", thickness=2, color=ACCENT,
+            spaceBefore=2 * mm, spaceAfter=4 * mm
+        ))
+
+        # ── Summary Stats Bar ──
+        if jobs:
+            sources = set(j.source for j in jobs)
+            upcoming = sum(1 for j in jobs if j.last_date and j.last_date >= date.today())
+            expired = sum(1 for j in jobs if j.last_date and j.last_date < date.today())
+
+            stats_data = [
+                [
+                    Paragraph(str(len(jobs)), self.styles["StatValue"]),
+                    Paragraph(str(len(sources)), self.styles["StatValue"]),
+                    Paragraph(str(upcoming), self.styles["StatValue"]),
+                ],
+                [
+                    Paragraph("Total Jobs", self.styles["StatLabel"]),
+                    Paragraph("Sources", self.styles["StatLabel"]),
+                    Paragraph("Open Deadlines", self.styles["StatLabel"]),
+                ],
+            ]
+            stats_table = Table(stats_data, colWidths=[doc.width / 3] * 3)
+            stats_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+                ('ROUNDEDCORNERS', [6, 6, 6, 6]),
+                ('TOPPADDING', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, -1), (-1, -1), 8),
+            ]))
+            story.append(stats_table)
+            story.append(Spacer(1, 6 * mm))
+
+        # ── Empty State ──
         if not jobs:
             story.append(Paragraph(
-                "No matching government jobs were found today.",
-                self.styles["NoJobs"]
+                "No government jobs found in the last 15 days.",
+                self.styles["EmptyState"]
             ))
-            story.append(Spacer(1, 10 * mm))
+            story.append(Spacer(1, 8 * mm))
             story.append(Paragraph(
-                "Don't worry — JobScout is monitoring 4 portals around the clock. "
-                "You'll receive a digest whenever matching jobs are posted.",
+                "JobScout-AI is monitoring 4 portals continuously. "
+                "You'll receive a report whenever matching jobs are posted.",
                 self.styles["Footer"]
             ))
         else:
-            # ── Summary Stats ──
-            sources = set(j.source for j in jobs)
-            upcoming = sum(1 for j in jobs if j.last_date and j.last_date >= date.today())
-            story.append(Paragraph(
-                f"<b>{len(jobs)}</b> Jobs • <b>{len(sources)}</b> Sources • "
-                f"<b>{upcoming}</b> Open Deadlines",
-                self.styles["SummaryStat"]
-            ))
-            story.append(Spacer(1, 4 * mm))
+            # ── Group Jobs by Date ──
+            grouped = self._group_by_date(jobs)
 
-            # ── Job Cards ──
-            for idx, job in enumerate(jobs, 1):
-                job_block = self._build_job_block(job, idx, len(jobs))
-                story.append(KeepTogether(job_block))
+            job_idx = 0
+            for date_key, date_jobs in grouped.items():
+                # Date section heading
+                story.append(HRFlowable(
+                    width="100%", thickness=0.5, color=BORDER,
+                    spaceBefore=3 * mm, spaceAfter=1 * mm
+                ))
+                story.append(Paragraph(
+                    f"📅 {date_key}  —  {len(date_jobs)} job{'s' if len(date_jobs) != 1 else ''}",
+                    self.styles["DateHeading"]
+                ))
+
+                # Job cards for this date
+                for job in date_jobs:
+                    job_idx += 1
+                    job_block = self._build_job_card(job, job_idx, len(jobs))
+                    story.append(KeepTogether(job_block))
 
         # ── Footer ──
-        story.append(Spacer(1, 10 * mm))
+        story.append(Spacer(1, 8 * mm))
         story.append(HRFlowable(
-            width="100%", thickness=0.5, color=DIVIDER_COLOR,
+            width="100%", thickness=1, color=ACCENT,
             spaceBefore=4 * mm, spaceAfter=4 * mm
         ))
         story.append(Paragraph(
-            f"Generated by JobScout Bot • {datetime.now().strftime('%d %b %Y, %I:%M %p')} • "
-            "Sources: NCS.gov.in, SarkariResult.com, FreeJobAlert.com, EmploymentNews.gov.in",
+            f"JobScout-AI • Report generated {datetime.now().strftime('%d %b %Y, %I:%M %p IST')}",
+            self.styles["Footer"]
+        ))
+        story.append(Paragraph(
+            "Sources: SarkariResult.com • FreeJobAlert.com • SarkariExam.com • RojgarResult.com",
             self.styles["Footer"]
         ))
 
@@ -215,81 +294,133 @@ class PDFGenerator:
             doc.build(story, onFirstPage=self._add_page_number, onLaterPages=self._add_page_number)
         except Exception as e:
             logger.error(f"PDF generation failed: {e}")
-            # Fallback: generate minimal PDF
             buffer = io.BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=A4)
-            doc.build([Paragraph(f"JobScout Digest — {digest_date}", self.styles["Title"]),
-                        Paragraph(f"Error generating full PDF: {e}", self.styles["Normal"])])
+            doc.build([
+                Paragraph(f"JobScout-AI Report — {digest_date}", self.styles["Title"]),
+                Paragraph(f"Error generating report: {e}", self.styles["Normal"])
+            ])
 
         buffer.seek(0)
         return buffer.read()
 
-    def _build_job_block(self, job: Job, index: int, total: int) -> list:
-        """Build the flowable elements for a single job card."""
+    def _group_by_date(self, jobs: List[Job]) -> Dict[str, List[Job]]:
+        """Group jobs by scraped date, sorted most recent first."""
+        grouped = defaultdict(list)
+        for job in jobs:
+            if job.scraped_at:
+                # Use the scraped date
+                if isinstance(job.scraped_at, str):
+                    try:
+                        dt = datetime.fromisoformat(job.scraped_at.replace("Z", "+00:00"))
+                        key = dt.strftime("%A, %d %B %Y")
+                    except ValueError:
+                        key = "Unknown Date"
+                else:
+                    key = job.scraped_at.strftime("%A, %d %B %Y")
+            else:
+                key = "Unknown Date"
+            grouped[key].append(job)
+
+        # Sort by date (most recent first) — parse back the date keys
+        def _parse_date_key(key):
+            try:
+                return datetime.strptime(key, "%A, %d %B %Y")
+            except ValueError:
+                return datetime.min
+
+        sorted_keys = sorted(grouped.keys(), key=_parse_date_key, reverse=True)
+        return {k: grouped[k] for k in sorted_keys}
+
+    def _build_job_card(self, job: Job, index: int, total: int) -> list:
+        """Build a clean job card with key information."""
         elements = []
 
         # Job number + title
         elements.append(Paragraph(
-            f"<b>{index}.</b> {self._escape(job.title)}",
+            f"<b>{index}.</b>  {self._escape(job.title)}",
             self.styles["JobTitle"]
         ))
 
         # Organization
         elements.append(Paragraph(
-            f"🏢 {self._escape(job.organization)}",
+            f"{self._escape(job.organization)}",
             self.styles["JobOrg"]
         ))
 
-        # Details table (two-column layout for compact display)
-        detail_rows = []
+        # ── Key Highlights Table ──
+        highlight_rows = []
 
-        if job.eligibility:
-            detail_rows.append(("📚 Eligibility", self._escape(job.eligibility)))
+        # Salary (prominent)
         if job.salary:
-            detail_rows.append(("💰 Salary", self._escape(job.salary)))
+            highlight_rows.append(
+                f"<b>💰 Salary:</b>  {self._escape(job.salary)}"
+            )
+
+        # Qualification / Eligibility
+        if job.eligibility:
+            highlight_rows.append(
+                f"<b>📚 Qualification:</b>  {self._escape(job.eligibility)}"
+            )
+
+        # Vacancies
         if job.vacancies:
-            detail_rows.append(("👥 Vacancies", self._escape(job.vacancies)))
+            highlight_rows.append(
+                f"<b>👥 Vacancies:</b>  {self._escape(job.vacancies)}"
+            )
+
+        # Exam
         if job.exam_required:
-            detail_rows.append(("📝 Exam", self._escape(job.exam_required)))
+            highlight_rows.append(
+                f"<b>📝 Exam:</b>  {self._escape(job.exam_required)}"
+            )
+
+        # Last Date with urgency
         if job.last_date:
             days_left = (job.last_date - date.today()).days
             urgency = ""
             if days_left < 0:
-                urgency = " (Expired)"
+                urgency = ' <font color="#EF4444">(Expired)</font>'
             elif days_left == 0:
-                urgency = " (Last Day!)"
+                urgency = ' <font color="#EF4444">(Last Day!)</font>'
             elif days_left <= 3:
-                urgency = f" ({days_left} days left!)"
+                urgency = f' <font color="#F59E0B">({days_left} days left!)</font>'
             elif days_left <= 7:
-                urgency = f" ({days_left} days left)"
-            detail_rows.append(("📅 Last Date", f"{job.last_date.strftime('%d %b %Y')}{urgency}"))
+                urgency = f' <font color="#3B82F6">({days_left} days left)</font>'
+            highlight_rows.append(
+                f"<b>📅 Last Date:</b>  {job.last_date.strftime('%d %b %Y')}{urgency}"
+            )
+
+        # Apply link
         if job.apply_link:
-            link_text = job.apply_link if len(job.apply_link) <= 60 else job.apply_link[:57] + "..."
-            detail_rows.append(("🔗 Apply Link", f'<a href="{job.apply_link}" color="blue">{self._escape(link_text)}</a>'))
+            link_text = job.apply_link if len(job.apply_link) <= 55 else job.apply_link[:52] + "..."
+            highlight_rows.append(
+                f'<b>🔗 Apply:</b>  <a href="{job.apply_link}" color="#3B82F6">{self._escape(link_text)}</a>'
+            )
 
-        detail_rows.append(("📡 Source", self._escape(job.source)))
-
-        # Build details as labeled paragraphs
-        for label, value in detail_rows:
-            elements.append(Paragraph(
-                f"<b>{label}:</b>  {value}",
-                self.styles["FieldValue"]
-            ))
-
-        # Degree tags as a compact line
+        # Degree tags
         if job.degree_tags:
             tags = ", ".join(job.degree_tags)
-            elements.append(Paragraph(
-                f"<b>🎓 Degrees:</b>  {self._escape(tags)}",
-                self.styles["FieldValue"]
-            ))
+            highlight_rows.append(
+                f"<b>🎓 Degrees:</b>  {self._escape(tags)}"
+            )
 
-        # Divider between jobs (not after the last one)
+        # Render all highlights
+        for row in highlight_rows:
+            elements.append(Paragraph(row, self.styles["JobField"]))
+
+        # Source tag
+        elements.append(Paragraph(
+            f"Source: {self._escape(job.source)}",
+            self.styles["SourceTag"]
+        ))
+
+        # Card separator
+        elements.append(Spacer(1, 2 * mm))
         if index < total:
-            elements.append(Spacer(1, 3 * mm))
             elements.append(HRFlowable(
-                width="100%", thickness=0.5, color=DIVIDER_COLOR,
-                spaceBefore=2 * mm, spaceAfter=4 * mm
+                width="100%", thickness=0.3, color=BORDER,
+                spaceBefore=1 * mm, spaceAfter=3 * mm
             ))
 
         return elements
@@ -307,13 +438,14 @@ class PDFGenerator:
 
     @staticmethod
     def _add_page_number(canvas, doc):
-        """Add page number to the bottom of each page."""
+        """Add page number and branding to each page."""
         page_num = canvas.getPageNumber()
         canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(BRAND_GRAY)
+        # Page number
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor("#94A3B8"))
         canvas.drawCentredString(
-            A4[0] / 2, 12 * mm,
-            f"Page {page_num}"
+            A4[0] / 2, 10 * mm,
+            f"JobScout-AI  •  Page {page_num}"
         )
         canvas.restoreState()

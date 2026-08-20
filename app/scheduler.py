@@ -5,6 +5,7 @@ No separate Render cron services needed. This uses APScheduler to run:
   - Morning Digest:   10:00 AM IST daily (4:30 AM UTC)
   - Evening Digest:    6:00 PM IST daily (12:30 PM UTC)
   - Deadline Reminders: 8:00 AM IST daily (2:30 AM UTC)
+  - DB Cleanup:       3:00 AM IST daily (auto-delete data > 30 days)
   - DB Keep-Alive:    Every 8 hours (prevents Supabase free-tier sleep)
 
 All jobs run in background threads so the FastAPI server stays responsive.
@@ -59,6 +60,32 @@ def _run_reminders():
         logger.error(f"Reminder job failed: {e}")
 
 
+def _run_db_cleanup():
+    """Background: delete data older than 30 days to save Supabase storage.
+
+    Runs once daily at 3:00 AM IST. Removes:
+    - Jobs older than 30 days (CASCADE handles related tables)
+    - Old digest_history records
+    """
+    try:
+        from app.database import Database
+        db = Database()
+        stats = db.cleanup_old_data(days=30)
+
+        total = stats.get("jobs_deleted", 0) + stats.get("digest_history_deleted", 0)
+        if total > 0:
+            logger.info(f"🗑️ DB Cleanup: deleted {stats['jobs_deleted']} old jobs, "
+                        f"{stats['digest_history_deleted']} old digest records")
+        else:
+            logger.info("🗑️ DB Cleanup: no old data to delete")
+
+        if stats.get("errors"):
+            for err in stats["errors"]:
+                logger.error(f"🗑️ Cleanup error: {err}")
+    except Exception as e:
+        logger.error(f"🗑️ DB Cleanup FAILED: {e}")
+
+
 def _run_db_keepalive():
     """Ping Supabase database to prevent free-tier sleep.
 
@@ -106,7 +133,7 @@ def start_scheduler():
         _run_morning_digest,
         CronTrigger(hour=10, minute=0, timezone=IST),
         id="morning_digest",
-        name="Morning PDF Digest (10 AM IST)",
+        name="Morning Report (10 AM IST)",
         replace_existing=True,
         misfire_grace_time=600,
     )
@@ -116,7 +143,7 @@ def start_scheduler():
         _run_evening_digest,
         CronTrigger(hour=18, minute=0, timezone=IST),
         id="evening_digest",
-        name="Evening PDF Digest (6 PM IST)",
+        name="Evening Report (6 PM IST)",
         replace_existing=True,
         misfire_grace_time=600,
     )
@@ -129,6 +156,16 @@ def start_scheduler():
         name="Deadline Reminders (8 AM IST)",
         replace_existing=True,
         misfire_grace_time=600,
+    )
+
+    # ── DB Cleanup: 3:00 AM IST daily ──
+    scheduler.add_job(
+        _run_db_cleanup,
+        CronTrigger(hour=3, minute=0, timezone=IST),
+        id="db_cleanup",
+        name="DB Cleanup (3 AM IST, >30 days)",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # ── DB Keep-Alive: Every 8 hours (3x daily) ──
@@ -150,11 +187,12 @@ def start_scheduler():
         pass
 
     logger.info("=" * 50)
-    logger.info("📅 Scheduler started with 5 jobs:")
+    logger.info("📅 Scheduler started with 6 jobs:")
     logger.info("   🔍 Scraper        → Every hour at :05")
-    logger.info("   🌅 Morning Digest → 10:00 AM IST")
-    logger.info("   🌇 Evening Digest →  6:00 PM IST")
+    logger.info("   🌅 Morning Report → 10:00 AM IST")
+    logger.info("   🌇 Evening Report →  6:00 PM IST")
     logger.info("   🔔 Reminders      →  8:00 AM IST")
+    logger.info("   🗑️ DB Cleanup     →  3:00 AM IST (>30 days)")
     logger.info("   💓 DB Keep-Alive  →  Every 8 hours")
     logger.info("=" * 50)
 
@@ -164,4 +202,3 @@ def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("📅 Scheduler stopped")
-

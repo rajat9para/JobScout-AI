@@ -37,19 +37,30 @@ class JobMatcher:
     }
 
     def match(self, profile: Profile, job: Job) -> bool:
-        """Returns True if job matches profile. All applicable checks must pass."""
+        """Returns True if job matches profile.
+
+        Uses relaxed 2-of-3 scoring: if at least 2 checks pass OR
+        interests match, the job is included. This prevents good jobs
+        from being filtered out when Gemini fails to extract perfect data.
+        """
         if profile.status != "active":
             return False
 
-        checks = [
-            self._match_qualification(profile, job),
-            self._match_interests(profile, job),
-            self._match_experience(profile, job),
-        ]
+        qual_match = self._match_qualification(profile, job)
+        interest_match = self._match_interests(profile, job)
+        exp_match = self._match_experience(profile, job)
 
-        result = all(checks)
+        checks_passed = sum([qual_match, interest_match, exp_match])
+
+        # Include if: interests match (primary filter) OR at least 2/3 checks pass
+        result = interest_match or checks_passed >= 2
+
         if result:
-            logger.info(f"✅ MATCH: {job.title} @ {job.organization}")
+            logger.info(f"✅ MATCH: {job.title} @ {job.organization} "
+                        f"(qual={qual_match}, interest={interest_match}, exp={exp_match})")
+        else:
+            logger.debug(f"❌ SKIP: {job.title} @ {job.organization} "
+                         f"(qual={qual_match}, interest={interest_match}, exp={exp_match})")
         return result
 
     def _match_qualification(self, profile: Profile, job: Job) -> bool:

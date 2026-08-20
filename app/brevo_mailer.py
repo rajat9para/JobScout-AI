@@ -1,16 +1,17 @@
 """Brevo (Sendinblue) transactional email client.
 
-Handles sending the nightly PDF digest and deadline reminder emails.
+Handles sending the daily PDF report and deadline reminder emails.
 Uses the official sib-api-v3-sdk Python SDK.
 
 Brevo Free Tier: 300 emails/day, 9000 emails/month — more than enough
 for a single-user daily digest.
+
+Design: Professional "JobScout-AI" branding with clean dark theme.
 """
 import base64
 import logging
 import time
 import re
-import os
 from datetime import date, datetime
 from typing import Optional
 
@@ -21,54 +22,44 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── Premium Email Design System ──
-# Consistent branding across all email types
-_FONT_STACK = "'Inter', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
-_BG_COLOR = "#0f0f1a"
-_CARD_BG = "#1a1a2e"
-_CARD_BORDER = "#2a2a4a"
-_ACCENT = "#6C8FFF"
-_ACCENT_BRIGHT = "#8BABFF"
-_GREEN = "#34D399"
-_GREEN_DARK = "#059669"
-_RED = "#F87171"
-_ORANGE = "#FBBF24"
-_TEXT = "#F8FAFC"
+# ── Professional Email Design System ──
+_FONT = "'Inter', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+_BG = "#0B1120"
+_CARD = "#111827"
+_CARD_BORDER = "#1F2937"
+_ACCENT = "#3B82F6"
+_ACCENT_LIGHT = "#60A5FA"
+_GREEN = "#10B981"
+_RED = "#EF4444"
+_AMBER = "#F59E0B"
+_TEXT = "#F1F5F9"
 _TEXT_DIM = "#94A3B8"
 _TEXT_MUTED = "#64748B"
 
 
-def _email_wrapper(inner_html: str, preheader: str = "") -> str:
-    """Wrap email content in the premium dark-theme shell with Google Fonts."""
+def _email_shell(content: str, preheader: str = "") -> str:
+    """Wrap content in the professional email shell."""
     return f"""<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>JobScout</title>
-    <!--[if mso]><style>body,table,td{{font-family:Arial,Helvetica,sans-serif!important}}</style><![endif]-->
+    <title>JobScout-AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    </style>
 </head>
-<body style="margin:0;padding:0;background:{_BG_COLOR};font-family:{_FONT_STACK};-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
-    <!-- Preheader text (hidden, shows in email preview) -->
-    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{preheader}</div>
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{_BG_COLOR};">
+<body style="margin:0;padding:0;background:{_BG};font-family:{_FONT};-webkit-font-smoothing:antialiased;">
+    <div style="display:none;max-height:0;overflow:hidden;">{preheader}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{_BG};">
         <tr><td align="center" style="padding:32px 16px;">
-            <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;">
-                {inner_html}
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+                {content}
             </table>
-
-            <!-- Footer -->
-            <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;">
-                <tr><td style="padding:24px 0 8px;text-align:center;">
-                    <p style="margin:0;font-size:11px;color:{_TEXT_MUTED};letter-spacing:0.5px;line-height:1.6;">
-                        JobScout v2.2 &bull; Your Personal Government Job Alert Bot<br>
-                        Sources: NCS.gov.in &bull; SarkariResult &bull; FreeJobAlert &bull; EmploymentNews
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+                <tr><td style="padding:20px 0;text-align:center;">
+                    <p style="margin:0;font-size:10px;color:{_TEXT_MUTED};letter-spacing:0.5px;line-height:1.6;">
+                        JobScout-AI &bull; Government Job Intelligence<br>
+                        Sources: SarkariResult &bull; FreeJobAlert &bull; SarkariExam &bull; RojgarResult
                     </p>
                 </td></tr>
             </table>
@@ -79,7 +70,7 @@ def _email_wrapper(inner_html: str, preheader: str = "") -> str:
 
 
 class BrevoMailer:
-    """Robust email sender with retry logic using Brevo transactional API."""
+    """Email sender with retry logic using Brevo transactional API."""
 
     def __init__(self):
         settings = get_settings()
@@ -91,23 +82,13 @@ class BrevoMailer:
         self.sender_name = settings.sender_name
         self.max_retries = settings.max_retries
         self.retry_delay = settings.retry_delay_seconds
-        self.last_error = None  # Store last error for dashboard reporting
+        self.last_error = None
 
     def verify_connection(self) -> dict:
-        """Verify Brevo API key, account status, and sender verification.
-
-        Returns a dict with:
-            ok: bool — True if everything is working
-            account: str — Account email
-            plan: str — Current plan type
-            credits: int — Daily email credits remaining
-            sender_verified: bool — Whether sender email is verified
-            error: str — Error message if not ok
-        """
+        """Verify Brevo API key, account status, and sender verification."""
         result = {"ok": False, "account": "", "plan": "", "credits": 0,
                   "sender_verified": False, "error": ""}
         try:
-            # Check account
             account_api = sib_api_v3_sdk.AccountApi(self.api_client)
             account = account_api.get_account()
             result["account"] = account.email or ""
@@ -127,7 +108,6 @@ class BrevoMailer:
             result["error"] = f"Connection error: {str(e)}"
             return result
 
-        # Check sender verification
         try:
             senders_api = sib_api_v3_sdk.SendersApi(self.api_client)
             senders = senders_api.get_senders()
@@ -138,18 +118,17 @@ class BrevoMailer:
                     result["sender_verified"] = True
                     break
             if not result["sender_verified"]:
-                result["error"] = f"SENDER NOT VERIFIED: '{self.sender_email}' is not verified in Brevo. Go to https://app.brevo.com/senders/list to add and verify it."
+                result["error"] = f"SENDER NOT VERIFIED: '{self.sender_email}' is not verified in Brevo."
                 return result
         except Exception as e:
             logger.warning(f"Could not check senders (non-fatal): {e}")
-            result["sender_verified"] = True  # Assume OK if we can't check
+            result["sender_verified"] = True
 
         result["ok"] = True
         return result
 
     @staticmethod
     def _validate_email(email: str) -> bool:
-        """Basic email format validation."""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return bool(re.match(pattern, email.strip()))
 
@@ -158,67 +137,58 @@ class BrevoMailer:
     # ══════════════════════════════════════════════════════════
 
     def send_test_email(self, to_email: str) -> bool:
-        """Send a premium test email to verify Brevo integration is working."""
+        """Send a test email to verify integration."""
         if not self._validate_email(to_email):
             logger.error(f"Invalid test email: {to_email}")
             return False
 
         now = datetime.now().strftime("%d %b %Y, %I:%M %p IST")
 
-        inner = f"""
-            <!-- Header with gradient -->
-            <tr><td style="background:linear-gradient(135deg,#1e3a5f 0%,#2d1b69 50%,#1a1a2e 100%);border-radius:20px 20px 0 0;padding:40px 32px;text-align:center;">
-                <div style="width:64px;height:64px;background:linear-gradient(135deg,{_ACCENT},{_GREEN});border-radius:16px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
-                    <span style="font-size:32px;line-height:64px;">🚀</span>
-                </div>
-                <h1 style="margin:0;font-size:26px;font-weight:800;color:{_TEXT};letter-spacing:-0.5px;">Email Service Active</h1>
-                <p style="margin:12px 0 0;font-size:14px;color:{_TEXT_DIM};font-weight:500;">JobScout v2.2 &mdash; Connection Verified</p>
+        content = f"""
+            <!-- Header -->
+            <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e293b 100%);border-radius:16px 16px 0 0;padding:36px 28px;text-align:center;">
+                <div style="font-size:28px;margin-bottom:12px;">✅</div>
+                <h1 style="margin:0;font-size:22px;font-weight:800;color:{_TEXT};letter-spacing:-0.3px;">JobScout-AI</h1>
+                <p style="margin:8px 0 0;font-size:12px;color:{_TEXT_DIM};font-weight:500;text-transform:uppercase;letter-spacing:1.5px;">Email Service Verified</p>
             </td></tr>
 
             <!-- Body -->
-            <tr><td style="background:{_CARD_BG};padding:32px;border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};">
-                <!-- Success Banner -->
-                <div style="background:linear-gradient(135deg,rgba(52,211,153,0.1),rgba(52,211,153,0.05));border:1px solid rgba(52,211,153,0.2);border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
-                    <span style="font-size:28px;display:block;margin-bottom:8px;">✅</span>
-                    <p style="margin:0;font-size:16px;font-weight:700;color:{_GREEN};">All Systems Operational</p>
-                    <p style="margin:8px 0 0;font-size:13px;color:{_TEXT_DIM};">Your Brevo email integration is working perfectly.</p>
+            <tr><td style="background:{_CARD};padding:28px;border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};">
+                <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px;text-align:center;margin-bottom:20px;">
+                    <p style="margin:0;font-size:14px;font-weight:700;color:{_GREEN};">All Systems Operational</p>
+                    <p style="margin:6px 0 0;font-size:12px;color:{_TEXT_DIM};">Email delivery is working correctly.</p>
                 </div>
 
-                <!-- Info Grid -->
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid {_CARD_BORDER};">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid {_CARD_BORDER};">
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📧 Recipient</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:500;">{to_email}</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT_MUTED};font-weight:600;">Recipient</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT};text-align:right;">{to_email}</td>
                     </tr>
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📬 Sender</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:500;">{self.sender_email}</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT_MUTED};font-weight:600;">Sent at</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT};text-align:right;">{now}</td>
                     </tr>
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">🕐 Sent at</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:500;">{now}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:16px 20px;font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📅 Schedule</td>
-                        <td style="padding:16px 20px;font-size:13px;color:{_ACCENT_BRIGHT};text-align:right;font-weight:600;">10 AM & 6 PM IST Daily</td>
+                        <td style="padding:12px 16px;font-size:12px;color:{_TEXT_MUTED};font-weight:600;">Schedule</td>
+                        <td style="padding:12px 16px;font-size:12px;color:{_ACCENT_LIGHT};text-align:right;font-weight:600;">10 AM &amp; 6 PM IST Daily</td>
                     </tr>
                 </table>
             </td></tr>
 
-            <!-- Bottom accent -->
-            <tr><td style="background:{_CARD_BG};border-radius:0 0 20px 20px;border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};border-bottom:1px solid {_CARD_BORDER};padding:20px 32px;text-align:center;">
-                <p style="margin:0;font-size:12px;color:{_TEXT_MUTED};">
-                    PDF digest emails with matched government jobs will be delivered to this address.
+            <!-- Footer -->
+            <tr><td style="background:{_CARD};border-radius:0 0 16px 16px;border:1px solid {_CARD_BORDER};border-top:0;padding:16px 28px;text-align:center;">
+                <p style="margin:0;font-size:11px;color:{_TEXT_MUTED};">
+                    Your daily job report with PDF attachment will be sent to this address.
                 </p>
             </td></tr>
         """
 
-        html = _email_wrapper(inner, preheader="Your JobScout email service is verified and working!")
+        html = _email_shell(content, preheader="JobScout-AI email service verified!")
 
         email = sib_api_v3_sdk.SendSmtpEmail(
-            to=[{"email": to_email, "name": "JobScout User"}],
+            to=[{"email": to_email, "name": "JobScout-AI User"}],
             sender={"name": self.sender_name, "email": self.sender_email},
-            subject="✅ JobScout — Email Service Verified & Working!",
+            subject="✅ JobScout-AI — Email Verified",
             html_content=html,
         )
 
@@ -235,7 +205,7 @@ class BrevoMailer:
         job_count: int,
         digest_date: Optional[date] = None,
     ) -> bool:
-        """Send the PDF digest email with attachment."""
+        """Send the daily report email with PDF attachment."""
         if not self._validate_email(to_email):
             logger.error(f"Invalid recipient email: {to_email}")
             return False
@@ -244,93 +214,89 @@ class BrevoMailer:
             digest_date = date.today()
 
         date_str = digest_date.strftime("%d %b %Y")
-        date_str_file = digest_date.strftime("%Y-%m-%d")
+        date_file = digest_date.strftime("%Y-%m-%d")
         day_name = digest_date.strftime("%A")
 
-        subject = f"📋 JobScout Digest — {date_str} ({job_count} Jobs)"
+        subject = f"📋 JobScout-AI Report — {date_str} ({job_count} Jobs)"
 
         if job_count == 0:
-            count_display = "0"
-            summary = "No matching government jobs were found today."
-            cta_text = "Don't worry — JobScout is monitoring 4 portals around the clock."
-            badge_bg = f"rgba(251,191,36,0.1)"
-            badge_border = f"rgba(251,191,36,0.3)"
-            badge_color = _ORANGE
+            status_text = "No matching jobs found today."
+            action_text = "JobScout-AI is monitoring 4 portals continuously. You'll be notified when new jobs match your profile."
+            badge_bg = "rgba(249,115,22,0.08)"
+            badge_border = "rgba(249,115,22,0.2)"
+            badge_color = _AMBER
         else:
-            count_display = str(job_count)
-            summary = f"<strong>{job_count}</strong> matching government job{'s' if job_count != 1 else ''} found today."
-            cta_text = "📎 Open the attached PDF for detailed descriptions, eligibility, salary, and apply links."
-            badge_bg = f"rgba(52,211,153,0.1)"
-            badge_border = f"rgba(52,211,153,0.3)"
+            status_text = f"<strong>{job_count}</strong> government job{'s' if job_count != 1 else ''} matched your profile."
+            action_text = "📎 Open the attached PDF for the complete report with job details, eligibility, salary, and apply links."
+            badge_bg = "rgba(16,185,129,0.08)"
+            badge_border = "rgba(16,185,129,0.2)"
             badge_color = _GREEN
 
-        inner = f"""
+        content = f"""
             <!-- Header -->
-            <tr><td style="background:linear-gradient(135deg,#0f2027 0%,#203a43 50%,#2c5364 100%);border-radius:20px 20px 0 0;padding:40px 32px;text-align:center;">
-                <div style="width:56px;height:56px;background:linear-gradient(135deg,{_ACCENT},#a78bfa);border-radius:14px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
-                    <span style="font-size:28px;line-height:56px;">📋</span>
-                </div>
-                <h1 style="margin:0;font-size:28px;font-weight:800;color:{_TEXT};letter-spacing:-0.5px;">JobScout Digest</h1>
-                <div style="margin-top:16px;display:inline-block;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:50px;padding:8px 24px;">
-                    <span style="font-size:13px;font-weight:600;color:{_TEXT_DIM};text-transform:uppercase;letter-spacing:1.5px;">{day_name}, {date_str}</span>
+            <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1B2A4A 50%,#1e293b 100%);border-radius:16px 16px 0 0;padding:36px 28px;text-align:center;">
+                <h1 style="margin:0;font-size:24px;font-weight:800;color:{_TEXT};letter-spacing:-0.3px;">JobScout-AI</h1>
+                <p style="margin:6px 0 0;font-size:11px;color:{_TEXT_DIM};font-weight:600;text-transform:uppercase;letter-spacing:2px;">Daily Job Report</p>
+                <div style="margin-top:14px;display:inline-block;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:40px;padding:6px 20px;">
+                    <span style="font-size:12px;font-weight:600;color:{_TEXT_DIM};letter-spacing:1px;">{day_name}, {date_str}</span>
                 </div>
             </td></tr>
 
-            <!-- Stats Bar -->
-            <tr><td style="background:{_CARD_BG};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:24px 32px;">
+            <!-- Stats -->
+            <tr><td style="background:{_CARD};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:20px 28px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td width="33%" style="text-align:center;padding:16px 8px;background:rgba(108,143,255,0.06);border-radius:12px;">
-                            <div style="font-size:32px;font-weight:800;color:{_ACCENT_BRIGHT};letter-spacing:-1px;">{count_display}</div>
-                            <div style="font-size:10px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">Jobs Found</div>
+                        <td width="30%" style="text-align:center;padding:14px 4px;background:rgba(59,130,246,0.05);border-radius:10px;">
+                            <div style="font-size:28px;font-weight:800;color:{_ACCENT_LIGHT};letter-spacing:-1px;">{job_count}</div>
+                            <div style="font-size:9px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">Jobs</div>
                         </td>
                         <td width="5%">&nbsp;</td>
-                        <td width="28%" style="text-align:center;padding:16px 8px;background:rgba(108,143,255,0.06);border-radius:12px;">
-                            <div style="font-size:32px;font-weight:800;color:{_ACCENT_BRIGHT};letter-spacing:-1px;">4</div>
-                            <div style="font-size:10px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">Sources</div>
+                        <td width="30%" style="text-align:center;padding:14px 4px;background:rgba(59,130,246,0.05);border-radius:10px;">
+                            <div style="font-size:28px;font-weight:800;color:{_ACCENT_LIGHT};letter-spacing:-1px;">4</div>
+                            <div style="font-size:9px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">Sources</div>
                         </td>
                         <td width="5%">&nbsp;</td>
-                        <td width="29%" style="text-align:center;padding:16px 8px;background:rgba(108,143,255,0.06);border-radius:12px;">
-                            <div style="font-size:32px;font-weight:800;color:{_ACCENT_BRIGHT};letter-spacing:-1px;">📄</div>
-                            <div style="font-size:10px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">PDF Attached</div>
+                        <td width="30%" style="text-align:center;padding:14px 4px;background:rgba(59,130,246,0.05);border-radius:10px;">
+                            <div style="font-size:28px;font-weight:800;color:{_ACCENT_LIGHT};">📄</div>
+                            <div style="font-size:9px;color:{_TEXT_MUTED};text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;font-weight:600;">PDF Report</div>
                         </td>
                     </tr>
                 </table>
             </td></tr>
 
-            <!-- Message -->
-            <tr><td style="background:{_CARD_BG};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:0 32px 24px;">
-                <div style="background:{badge_bg};border:1px solid {badge_border};border-radius:12px;padding:20px;text-align:center;">
-                    <p style="margin:0;font-size:15px;color:{_TEXT};line-height:1.7;font-weight:500;">{summary}</p>
-                    <p style="margin:12px 0 0;font-size:13px;color:{badge_color};font-weight:600;">{cta_text}</p>
+            <!-- Status Message -->
+            <tr><td style="background:{_CARD};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:0 28px 20px;">
+                <div style="background:{badge_bg};border:1px solid {badge_border};border-radius:10px;padding:16px;text-align:center;">
+                    <p style="margin:0;font-size:14px;color:{_TEXT};line-height:1.6;font-weight:500;">{status_text}</p>
+                    <p style="margin:10px 0 0;font-size:12px;color:{badge_color};font-weight:600;">{action_text}</p>
                 </div>
             </td></tr>
 
             <!-- Footer -->
-            <tr><td style="background:{_CARD_BG};border-radius:0 0 20px 20px;border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};border-bottom:1px solid {_CARD_BORDER};padding:20px 32px;text-align:center;">
-                <p style="margin:0;font-size:12px;color:{_TEXT_MUTED};">
-                    Sent to: {to_email} &bull; Next digest at {'6:00 PM' if datetime.now().hour < 15 else '10:00 AM'} IST
+            <tr><td style="background:{_CARD};border-radius:0 0 16px 16px;border:1px solid {_CARD_BORDER};border-top:0;padding:16px 28px;text-align:center;">
+                <p style="margin:0;font-size:11px;color:{_TEXT_MUTED};">
+                    Sent to {to_email} &bull; Next report at {'6:00 PM' if datetime.now().hour < 15 else '10:00 AM'} IST
                 </p>
             </td></tr>
         """
 
-        html = _email_wrapper(inner, preheader=f"{job_count} government jobs found today — open attached PDF for details")
+        html = _email_shell(content, preheader=f"{job_count} government jobs found — see attached PDF report")
 
-        pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+        pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
-        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        send_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": to_email.strip()}],
             sender={"name": self.sender_name, "email": self.sender_email},
             subject=subject,
             html_content=html,
             attachment=[{
-                "content": pdf_base64,
-                "name": f"JobScout_Digest_{date_str_file}.pdf",
+                "content": pdf_b64,
+                "name": f"JobScout-AI_Report_{date_file}.pdf",
                 "type": "application/pdf",
             }],
         )
 
-        return self._send_with_retry(send_smtp_email, "digest")
+        return self._send_with_retry(send_email, "digest")
 
     # ══════════════════════════════════════════════════════════
     #  REMINDER EMAIL
@@ -347,18 +313,18 @@ class BrevoMailer:
         days_left: int,
         reminder_type: str,
     ) -> bool:
-        """Send a deadline reminder email (no PDF attachment)."""
+        """Send a deadline reminder email."""
         if not self._validate_email(to_email):
             logger.error(f"Invalid recipient email: {to_email}")
             return False
 
         urgency_map = {
-            "3_days": ("⏰ 3 Days Left", _ORANGE, "rgba(251,191,36,0.1)", "rgba(251,191,36,0.3)"),
-            "1_day":  ("⚠️ 1 Day Left", _RED, "rgba(248,113,113,0.1)", "rgba(248,113,113,0.3)"),
-            "today":  ("🔥 Last Day!", _RED, "rgba(248,113,113,0.15)", "rgba(248,113,113,0.4)"),
+            "3_days": ("⏰ 3 Days Left", _AMBER, "rgba(245,158,11,0.08)", "rgba(245,158,11,0.2)"),
+            "1_day":  ("⚠️ 1 Day Left", _RED, "rgba(239,68,68,0.08)", "rgba(239,68,68,0.2)"),
+            "today":  ("🔥 Last Day!", _RED, "rgba(239,68,68,0.12)", "rgba(239,68,68,0.3)"),
         }
         header, color, bg, border = urgency_map.get(
-            reminder_type, ("⏰ Deadline Reminder", _ORANGE, "rgba(251,191,36,0.1)", "rgba(251,191,36,0.3)")
+            reminder_type, ("⏰ Deadline Reminder", _AMBER, "rgba(245,158,11,0.08)", "rgba(245,158,11,0.2)")
         )
 
         subject = f"{header} — {job_title} @ {organization}"
@@ -366,62 +332,61 @@ class BrevoMailer:
         apply_btn = ""
         if apply_link:
             apply_btn = f"""
-                <tr><td style="padding:0 32px 24px;background:{_CARD_BG};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};text-align:center;">
-                    <a href="{apply_link}" style="display:inline-block;padding:14px 40px;background:linear-gradient(135deg,{_ACCENT},#a78bfa);color:white;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;letter-spacing:0.3px;">Apply Now &rarr;</a>
+                <tr><td style="padding:0 28px 20px;background:{_CARD};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};text-align:center;">
+                    <a href="{apply_link}" style="display:inline-block;padding:12px 36px;background:{_ACCENT};color:white;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Apply Now →</a>
                 </td></tr>
             """
 
-        inner = f"""
-            <!-- Urgency Header -->
-            <tr><td style="background:linear-gradient(135deg,#1a0000 0%,#2d1b1b 50%,#1a1a2e 100%);border-radius:20px 20px 0 0;padding:36px 32px;text-align:center;">
-                <div style="font-size:40px;margin-bottom:12px;">{header.split(' ')[0]}</div>
-                <h1 style="margin:0;font-size:24px;font-weight:800;color:{color};letter-spacing:-0.3px;">{header}</h1>
-                <p style="margin:10px 0 0;font-size:13px;color:{_TEXT_DIM};">Application Deadline Reminder</p>
+        content = f"""
+            <!-- Header -->
+            <tr><td style="background:linear-gradient(135deg,#1a0505 0%,#2d1515 50%,#1e293b 100%);border-radius:16px 16px 0 0;padding:32px 28px;text-align:center;">
+                <div style="font-size:36px;margin-bottom:10px;">{header.split(' ')[0]}</div>
+                <h1 style="margin:0;font-size:20px;font-weight:800;color:{color};letter-spacing:-0.3px;">{header}</h1>
+                <p style="margin:8px 0 0;font-size:11px;color:{_TEXT_DIM};text-transform:uppercase;letter-spacing:1.5px;">JobScout-AI • Deadline Alert</p>
             </td></tr>
 
-            <!-- Job Details -->
-            <tr><td style="background:{_CARD_BG};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:24px 32px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid {_CARD_BORDER};">
+            <!-- Details -->
+            <tr><td style="background:{_CARD};border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};padding:20px 28px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid {_CARD_BORDER};">
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📌 Post</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:14px;color:{_TEXT};text-align:right;font-weight:700;">{job_title}</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT_MUTED};font-weight:600;">📌 Post</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:700;">{job_title}</td>
                     </tr>
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">🏢 Organization</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:500;">{organization}</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT_MUTED};font-weight:600;">🏢 Organization</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT};text-align:right;">{organization}</td>
                     </tr>
                     <tr>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📝 Exam</td>
-                        <td style="padding:16px 20px;border-bottom:1px solid {_CARD_BORDER};font-size:13px;color:{_TEXT};text-align:right;font-weight:500;">{exam}</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT_MUTED};font-weight:600;">📝 Exam</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid {_CARD_BORDER};font-size:12px;color:{_TEXT};text-align:right;">{exam}</td>
                     </tr>
                     <tr>
-                        <td style="padding:16px 20px;font-size:13px;color:{_TEXT_MUTED};font-weight:600;">📅 Last Date</td>
-                        <td style="padding:16px 20px;font-size:14px;color:{color};text-align:right;font-weight:800;">{last_date_str}</td>
+                        <td style="padding:12px 16px;font-size:12px;color:{_TEXT_MUTED};font-weight:600;">📅 Last Date</td>
+                        <td style="padding:12px 16px;font-size:13px;color:{color};text-align:right;font-weight:800;">{last_date_str}</td>
                     </tr>
                 </table>
             </td></tr>
 
-            <!-- Apply Button -->
             {apply_btn}
 
             <!-- Footer -->
-            <tr><td style="background:{_CARD_BG};border-radius:0 0 20px 20px;border-left:1px solid {_CARD_BORDER};border-right:1px solid {_CARD_BORDER};border-bottom:1px solid {_CARD_BORDER};padding:20px 32px;text-align:center;">
-                <p style="margin:0;font-size:12px;color:{_TEXT_MUTED};">
-                    JobScout Bot &bull; Smart Deadline Alerts
+            <tr><td style="background:{_CARD};border-radius:0 0 16px 16px;border:1px solid {_CARD_BORDER};border-top:0;padding:16px 28px;text-align:center;">
+                <p style="margin:0;font-size:11px;color:{_TEXT_MUTED};">
+                    JobScout-AI &bull; Smart Deadline Alerts
                 </p>
             </td></tr>
         """
 
-        html = _email_wrapper(inner, preheader=f"{header} — {job_title} at {organization}. Apply before {last_date_str}!")
+        html = _email_shell(content, preheader=f"{header} — {job_title} at {organization}. Apply before {last_date_str}!")
 
-        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        send_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": to_email.strip()}],
             sender={"name": self.sender_name, "email": self.sender_email},
             subject=subject,
             html_content=html,
         )
 
-        return self._send_with_retry(send_smtp_email, f"reminder-{reminder_type}")
+        return self._send_with_retry(send_email, f"reminder-{reminder_type}")
 
     # ══════════════════════════════════════════════════════════
     #  SEND WITH RETRY
@@ -438,15 +403,14 @@ class BrevoMailer:
             except ApiException as e:
                 body = str(e.body) if e.body else str(e)
                 logger.error(f"📧 [{label}] Brevo API error (attempt {attempt}/{self.max_retries}): {body}")
-                # Parse specific error types for user-friendly messages
                 if "unrecognised IP" in body or "unauthorized" in body.lower():
                     self.last_error = "IP_BLOCKED: Your IP is not authorized in Brevo. Disable IP restriction at https://app.brevo.com/security/authorised_ips"
                 elif e.status == 401:
-                    self.last_error = "INVALID_API_KEY: Brevo API key is invalid or expired. Check .env file."
+                    self.last_error = "INVALID_API_KEY: Brevo API key is invalid or expired."
                 elif "not found" in body.lower() and "sender" in body.lower():
-                    self.last_error = "SENDER_NOT_VERIFIED: Sender email not verified in Brevo. Verify at https://app.brevo.com/senders/list"
+                    self.last_error = "SENDER_NOT_VERIFIED: Sender email not verified in Brevo."
                 elif e.status == 429:
-                    self.last_error = "RATE_LIMITED: Brevo daily email limit reached (300/day on free plan). Try again tomorrow."
+                    self.last_error = "RATE_LIMITED: Brevo daily email limit reached."
                 else:
                     self.last_error = f"BREVO_ERROR ({e.status}): {body[:200]}"
                 if attempt < self.max_retries:

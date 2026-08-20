@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ── Gemini (Google AI) ──
     gemini_api_key: str
-    gemini_model: str = "gemini-2.0-flash"  # Free tier: 15 RPM, 1M tokens/day
+    gemini_model: str = "gemini-3.6-flash"  # Updated: gemini-2.0-flash is discontinued
 
     # ── App ──
     app_env: str = "production"

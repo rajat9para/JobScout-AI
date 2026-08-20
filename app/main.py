@@ -276,21 +276,22 @@ async def digest_history():
 
 @app.get("/api/trigger-digest")
 async def trigger_digest():
-    """Manually trigger digest email.
+    """Manually trigger report email.
     
     Strategy:
     1. First try: pending jobs from today's daily_digest queue
     2. Fallback: pending jobs from ANY date (not yet sent)
-    3. Last resort: pull all recent jobs from last 7 days directly
+    3. Last resort: pull last 15 days of jobs (profile-filtered)
     
     This ensures the button ALWAYS works, even if no scraper has run.
     """
     try:
         from app.pdf_generator import PDFGenerator
         from app.brevo_mailer import BrevoMailer
+        from app.matcher import JobMatcher
 
         settings = get_settings()
-        logger.info("📧 Manual digest trigger started")
+        logger.info("📧 Manual report trigger started")
 
         # Get profile
         profile = db.get_profile_by_email(settings.user_email)
@@ -301,7 +302,7 @@ async def trigger_digest():
             return JSONResponse(content={"error": "No profile found. Please save your profile first."}, status_code=404)
 
         user_email = profile.email or settings.user_email
-        logger.info(f"📧 Digest for: {user_email}")
+        logger.info(f"📧 Report for: {user_email}")
 
         # Strategy 1: Today's pending digest queue
         jobs = db.get_pending_digest_jobs()
@@ -314,14 +315,20 @@ async def trigger_digest():
             source = "backlog"
             logger.info(f"📋 Backlog digest queue: {len(jobs)} jobs")
 
-        # Strategy 3: Pull recent jobs directly (last 7 days)
+        # Strategy 3: Last 15 days of jobs (profile-filtered)
         if not jobs:
-            jobs = db.get_recent_jobs(hours=168)  # 7 days
-            source = "recent"
-            logger.info(f"📋 Recent jobs fallback: {len(jobs)} jobs")
+            all_recent = db.get_jobs_last_n_days(days=15)
+            logger.info(f"📋 15-day window: {len(all_recent)} total jobs")
+            if all_recent:
+                matcher = JobMatcher()
+                jobs = [j for j in all_recent if matcher.match(profile, j)]
+                logger.info(f"📋 After profile filter: {len(jobs)} matching jobs")
+                if not jobs:
+                    jobs = all_recent  # Include all if no matches
+            source = "15day_window"
 
         if not jobs:
-            logger.info("No jobs found anywhere for digest")
+            logger.info("No jobs found anywhere for report")
             return {"status": "skipped", "message": "No jobs found. Run a scrape first to populate the database.", "jobs": 0, "email": user_email}
 
         # Generate PDF
@@ -341,7 +348,7 @@ async def trigger_digest():
             if source in ("queued", "backlog"):
                 db.mark_digest_sent()
             db.record_digest_history(len(jobs), "manual")
-            logger.info(f"✅ Manual digest sent: {len(jobs)} jobs to {user_email} (source: {source})")
+            logger.info(f"✅ Manual report sent: {len(jobs)} jobs to {user_email} (source: {source})")
             return {"status": "sent", "jobs": len(jobs), "email": user_email, "source": source}
         else:
             error_detail = mailer.last_error or "Email send failed. Check Brevo API key and sender email verification."
@@ -349,7 +356,7 @@ async def trigger_digest():
             return JSONResponse(content={"error": error_detail}, status_code=500)
 
     except Exception as e:
-        logger.error(f"Manual digest trigger failed: {e}", exc_info=True)
+        logger.error(f"Manual report trigger failed: {e}", exc_info=True)
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
