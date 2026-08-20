@@ -580,11 +580,17 @@ DASHBOARD_HTML = """
             </div>
         </div>
         <div class="glass" style="margin-top:18px;">
+            <div class="glass-title">📬 Brevo Email Status</div>
+            <div id="brevoStatus" style="font-size:13px;color:var(--text-dim);">Click to check...</div>
+            <button class="btn btn-outline" style="margin-top:14px;" onclick="verifyBrevo()">🔍 Check Brevo Connection</button>
+        </div>
+        <div class="glass" style="margin-top:18px;">
             <div class="glass-title">🔗 Quick Links</div>
             <div style="display:flex;flex-direction:column;gap:12px;">
                 <a href="/health" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;transition:color 0.2s;">🩺 Health Check →</a>
                 <a href="/api/profile" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📊 Profile JSON →</a>
                 <a href="/api/digest-status" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📋 Digest Status →</a>
+                <a href="/api/verify-brevo" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📬 Brevo Diagnostics →</a>
                 <a href="/api/scheduler-status" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">⚙️ Scheduler Status →</a>
             </div>
         </div>
@@ -606,7 +612,7 @@ function tab(id,el){
     document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("on"));
     document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));
     el.classList.add("on");document.getElementById("p-"+id).classList.add("on");
-    if(id==="history")loadHistory();if(id==="schedule")loadScheduler();
+    if(id==="history")loadHistory();if(id==="schedule")loadScheduler();if(id==="actions")verifyBrevo();
 }
 
 function renderChips(){
@@ -717,14 +723,48 @@ async function testEmail(card){
     if(!e) { toast("Please enter an email in the Profile section first", "err"); return; }
     t.innerHTML='<span class="spin"></span> Sending...';
     try{const r=await fetch("/api/test-email?email="+encodeURIComponent(e));
-        if(r.ok){const d=await safeJson(r); toast(`Test email sent to ${d.email||''}! 📧`,"ok");}
+        if(r.ok){const d=await safeJson(r); toast(`Test email sent to ${d.email||''}! Check your inbox 📧`,"ok");}
         else{
             const ct=r.headers.get("content-type");
-            if(ct&&ct.includes("application/json")){const d=await r.json();toast(d.error||"Email failed","err");}
+            if(ct&&ct.includes("application/json")){
+                const d=await r.json();
+                const err=d.error||"Email failed";
+                // Show user-friendly error based on error type
+                if(err.includes('IP_BLOCKED')) toast('❌ IP blocked by Brevo. Disable IP restriction in Brevo dashboard.','err');
+                else if(err.includes('INVALID_API_KEY')) toast('❌ Brevo API key is invalid. Update .env file.','err');
+                else if(err.includes('SENDER_NOT_VERIFIED')) toast('❌ Sender email not verified in Brevo.','err');
+                else if(err.includes('RATE_LIMITED')) toast('❌ Daily email limit reached (300/day). Try tomorrow.','err');
+                else toast(err,'err');
+            }
             else toast("Server error sending email","err");
         }
     }catch(e){toast("Network error","err");}
     t.innerHTML=orig;
+}
+async function verifyBrevo(){
+    const el=document.getElementById('brevoStatus');
+    el.innerHTML='<span class="spin"></span> Checking Brevo connection...';
+    try{
+        const r=await fetch('/api/verify-brevo');
+        const d=await r.json();
+        if(d.status==='ok'){
+            el.innerHTML=`<div style='color:var(--green);font-weight:600;margin-bottom:8px;'>✅ Connected</div>`
+                +`<div style='display:grid;gap:6px;font-size:12px;'>`
+                +`<div>📧 Account: <strong>${d.account}</strong></div>`
+                +`<div>📋 Plan: <strong>${d.plan}</strong> (${d.credits} emails/day)</div>`
+                +`<div>✅ Sender: <strong>${d.sender_email}</strong> (verified)</div>`
+                +`</div>`;
+        } else {
+            const err=d.error||'Unknown error';
+            let hint='';
+            if(err.includes('IP')) hint='<br><a href="https://app.brevo.com/security/authorised_ips" target="_blank" style="color:var(--accent-bright);">Fix: Disable IP restriction →</a>';
+            else if(err.includes('API KEY')) hint='<br>Fix: Generate new API key at Brevo dashboard';
+            else if(err.includes('SENDER')) hint='<br><a href="https://app.brevo.com/senders/list" target="_blank" style="color:var(--accent-bright);">Fix: Verify sender email →</a>';
+            el.innerHTML=`<div style='color:var(--red);font-weight:600;margin-bottom:8px;'>❌ Error</div><div style='font-size:12px;color:var(--text-dim);word-break:break-word;'>${err}${hint}</div>`;
+        }
+    }catch(e){
+        el.innerHTML='<span style="color:var(--red);">❌ Could not reach server</span>';
+    }
 }
 async function triggerDigest(card){
     const t=document.getElementById("actDigest");

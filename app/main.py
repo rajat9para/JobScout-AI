@@ -276,39 +276,80 @@ async def digest_history():
 
 @app.get("/api/trigger-digest")
 async def trigger_digest():
-    """Manually trigger digest email (for testing)."""
+    """Manually trigger digest email.
+    
+    Strategy:
+    1. First try: pending jobs from today's daily_digest queue
+    2. Fallback: pending jobs from ANY date (not yet sent)
+    3. Last resort: pull all recent jobs from last 7 days directly
+    
+    This ensures the button ALWAYS works, even if no scraper has run.
+    """
     try:
         from app.pdf_generator import PDFGenerator
         from app.brevo_mailer import BrevoMailer
 
         settings = get_settings()
+        logger.info("📧 Manual digest trigger started")
+
+        # Get profile
         profile = db.get_profile_by_email(settings.user_email)
         if not profile:
-            return JSONResponse(content={"error": "No profile found."}, status_code=404)
+            profile = db.get_first_active_profile()
+        if not profile:
+            logger.error("No profile found for digest")
+            return JSONResponse(content={"error": "No profile found. Please save your profile first."}, status_code=404)
 
+        user_email = profile.email or settings.user_email
+        logger.info(f"📧 Digest for: {user_email}")
+
+        # Strategy 1: Today's pending digest queue
         jobs = db.get_pending_digest_jobs()
+        source = "queued"
+        logger.info(f"📋 Today's digest queue: {len(jobs)} jobs")
+
+        # Strategy 2: Any date's unsent digest entries
         if not jobs:
-            return {"status": "skipped", "message": "No pending jobs to digest", "jobs": 0, "email": profile.email or settings.user_email}
-            
+            jobs = db.get_all_pending_digest_jobs()
+            source = "backlog"
+            logger.info(f"📋 Backlog digest queue: {len(jobs)} jobs")
+
+        # Strategy 3: Pull recent jobs directly (last 7 days)
+        if not jobs:
+            jobs = db.get_recent_jobs(hours=168)  # 7 days
+            source = "recent"
+            logger.info(f"📋 Recent jobs fallback: {len(jobs)} jobs")
+
+        if not jobs:
+            logger.info("No jobs found anywhere for digest")
+            return {"status": "skipped", "message": "No jobs found. Run a scrape first to populate the database.", "jobs": 0, "email": user_email}
+
+        # Generate PDF
         pdf_gen = PDFGenerator()
         pdf_bytes = pdf_gen.generate(jobs)
+        logger.info(f"📄 PDF generated: {len(pdf_bytes)} bytes, {len(jobs)} jobs")
 
+        # Send email
         mailer = BrevoMailer()
         success = mailer.send_digest_email(
-            to_email=profile.email or settings.user_email,
+            to_email=user_email,
             pdf_bytes=pdf_bytes,
             job_count=len(jobs),
         )
 
         if success:
-            db.mark_digest_sent()
+            if source in ("queued", "backlog"):
+                db.mark_digest_sent()
             db.record_digest_history(len(jobs), "manual")
-            return {"status": "sent", "jobs": len(jobs), "email": profile.email or settings.user_email}
+            logger.info(f"✅ Manual digest sent: {len(jobs)} jobs to {user_email} (source: {source})")
+            return {"status": "sent", "jobs": len(jobs), "email": user_email, "source": source}
         else:
-            return JSONResponse(content={"error": "Email send failed. Check Brevo API key."}, status_code=500)
+            error_detail = mailer.last_error or "Email send failed. Check Brevo API key and sender email verification."
+            logger.error(f"❌ Brevo send_digest_email returned False: {error_detail}")
+            return JSONResponse(content={"error": error_detail}, status_code=500)
 
     except Exception as e:
-        logger.error(f"Manual digest trigger failed: {e}")
+        logger.error(f"Manual digest trigger failed: {e}", exc_info=True)
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
@@ -351,11 +392,41 @@ async def test_email(email: Optional[str] = None):
         if success:
             return {"status": "sent", "email": user_email, "message": "Test email sent! Check your inbox."}
         else:
-            return JSONResponse(content={"error": "Email send failed. Check Brevo API key and sender verification."}, status_code=500)
+            # Return specific error from mailer
+            error_detail = mailer.last_error or "Email send failed. Check Brevo API key and sender verification."
+            return JSONResponse(content={"error": error_detail}, status_code=500)
 
     except Exception as e:
         logger.error(f"Test email failed: {e}")
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/verify-brevo")
+async def verify_brevo():
+    """Diagnose Brevo email service — checks API key, IP restrictions, sender verification, and credits."""
+    try:
+        from app.brevo_mailer import BrevoMailer
+        mailer = BrevoMailer()
+        result = mailer.verify_connection()
+        if result["ok"]:
+            return {
+                "status": "ok",
+                "account": result["account"],
+                "plan": result["plan"],
+                "credits": result["credits"],
+                "sender_verified": result["sender_verified"],
+                "sender_email": mailer.sender_email,
+                "message": "Brevo email service is fully operational ✅"
+            }
+        else:
+            return JSONResponse(content={
+                "status": "error",
+                "error": result["error"],
+                "sender_email": mailer.sender_email,
+            }, status_code=500)
+    except Exception as e:
+        logger.error(f"Brevo verification failed: {e}")
+        return JSONResponse(content={"status": "error", "error": str(e)}, status_code=500)
 
 
 @app.get("/api/scheduler-status")
@@ -375,3 +446,4 @@ async def scheduler_status():
         return {"running": True, "jobs": jobs}
     except Exception as e:
         return {"running": False, "error": str(e)}
+

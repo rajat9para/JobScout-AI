@@ -8,7 +8,9 @@ import json
 import logging
 import re
 import time
+import warnings
 from typing import List
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
 import google.generativeai as genai
 from app.config import get_settings
 from app.models import Job

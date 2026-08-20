@@ -285,6 +285,39 @@ class Database:
         result = self._retry(_fetch)
         return result if result is not None else []
 
+    def get_all_pending_digest_jobs(self) -> List[Job]:
+        """Fetch ALL un-sent digest entries across all dates (backlog).
+        
+        Fallback when today's queue is empty — picks up jobs queued
+        on previous days that were never sent.
+        """
+        def _fetch():
+            digest_result = (
+                self.client.table("daily_digest")
+                .select("job_id")
+                .eq("sent", False)
+                .order("created_at", desc=True)
+                .limit(50)
+                .execute()
+            )
+
+            if not digest_result.data:
+                return []
+
+            job_ids = [entry["job_id"] for entry in digest_result.data]
+
+            jobs_result = (
+                self.client.table("jobs")
+                .select("*")
+                .in_("id", job_ids)
+                .order("scraped_at", desc=True)
+                .execute()
+            )
+            return [Job(**row) for row in jobs_result.data]
+
+        result = self._retry(_fetch)
+        return result if result is not None else []
+
     def mark_digest_sent(self, digest_date: Optional[date] = None) -> bool:
         """Mark all digest entries for a date as sent."""
         target_date = (digest_date or date.today()).isoformat()

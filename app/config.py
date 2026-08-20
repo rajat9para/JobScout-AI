@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ── Gemini (Google AI) ──
     gemini_api_key: str
-    gemini_model: str = "gemini-1.5-flash"  # Free tier: 15 RPM, 1M tokens/day
+    gemini_model: str = "gemini-2.0-flash"  # Free tier: 15 RPM, 1M tokens/day
 
     # ── App ──
     app_env: str = "production"
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     retry_delay_seconds: int = 5
 
     # ── Digest Settings ──
-    digest_send_hour: int = 22  # 10 PM IST (server time) — when nightly PDF digest is sent
+    digest_send_hour: int = 22  # 10 PM IST (server time) — legacy setting, scheduler uses 10AM/6PM now
     digest_timezone: str = "Asia/Kolkata"
 
     # ── Feature Flags ──
