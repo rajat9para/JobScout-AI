@@ -1,4 +1,4 @@
-"""Dashboard HTML — Premium glassmorphism dark-theme web dashboard.
+"""Dashboard HTML — Premium SaaS web dashboard.
 
 Complete single-page app for managing JobScout:
 - Profile management with chip selectors
@@ -9,595 +9,594 @@ Complete single-page app for managing JobScout:
 - Scheduler status monitoring
 """
 
-DASHBOARD_HTML = """
-<!DOCTYPE html>
-<html lang="en">
+DASHBOARD_HTML = """<!DOCTYPE html>
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JobScout — Command Center</title>
     <link rel="icon" type="image/png" href="/static/weblogo.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #080816;
-            --bg-glass: rgba(255, 255, 255, 0.03);
-            --bg-glass-strong: rgba(12, 12, 30, 0.7);
-            --bg-card: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-border-hover: rgba(255, 255, 255, 0.15);
-            --glass-glow: rgba(108, 143, 255, 0.2);
-            --accent: #6C8FFF;
-            --accent-bright: #8BABFF;
-            --accent-glow: rgba(108, 143, 255, 0.4);
-            --green: #34D399;
-            --green-glow: rgba(52, 211, 153, 0.3);
-            --red: #F87171;
-            --red-glow: rgba(248, 113, 113, 0.3);
-            --orange: #FBBF24;
-            --purple: #A78BFA;
-            --cyan: #22D3EE;
-            --text: #F8FAFC;
-            --text-dim: #94A3B8;
-            --text-muted: #64748B;
-            --border: rgba(255, 255, 255, 0.06);
-            --radius: 20px;
-            --radius-sm: 12px;
+            /* Light Theme (Supabase Inspired) */
+            --bg-base: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-surface-hover: #f1f5f9;
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+            
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-dim: #94a3b8;
+            
+            --primary: #10B981;
+            --primary-hover: #059669;
+            --primary-glow: rgba(16, 185, 129, 0.2);
+            --primary-text: #ffffff;
+            --primary-border: #047857;
+            
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            
+            --green-bg: rgba(16, 185, 129, 0.1);
+            --green-text: #059669;
+            --green-border: rgba(16, 185, 129, 0.2);
+            
+            --red-bg: rgba(239, 68, 68, 0.1);
+            --red-text: #dc2626;
+            --red-border: rgba(239, 68, 68, 0.2);
+            
+            --orange-bg: rgba(245, 158, 11, 0.1);
+            --orange-text: #d97706;
+            --orange-border: rgba(245, 158, 11, 0.2);
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            --shadow-card: 0 2px 10px rgba(0,0,0,0.02), 0 0 1px rgba(0,0,0,0.1);
+            
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-full: 9999px;
+            
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --input-focus: #10B981;
+            --input-focus-ring: rgba(16, 185, 129, 0.2);
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme (Premium Charcoal & Red) */
+            --bg-base: #09090b;
+            --bg-surface: #18181b;
+            --bg-surface-hover: #27272a;
+            --border: rgba(255,255,255,0.08);
+            --border-hover: rgba(255,255,255,0.15);
+            
+            --text-main: #f8fafc;
+            --text-muted: #a1a1aa;
+            --text-dim: #71717a;
+            
+            --primary: #ef4444;
+            --primary-hover: #dc2626;
+            --primary-glow: rgba(239, 68, 68, 0.3);
+            --primary-text: #ffffff;
+            --primary-border: #b91c1c;
+            
+            --accent-glow: rgba(239, 68, 68, 0.15);
+            
+            --green-bg: rgba(16, 185, 129, 0.15);
+            --green-text: #34d399;
+            --green-border: rgba(16, 185, 129, 0.3);
+            
+            --red-bg: rgba(239, 68, 68, 0.15);
+            --red-text: #f87171;
+            --red-border: rgba(239, 68, 68, 0.3);
+            
+            --orange-bg: rgba(245, 158, 11, 0.15);
+            --orange-text: #fbbf24;
+            --orange-border: rgba(245, 158, 11, 0.3);
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+            --shadow-card: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+            
+            --input-bg: #09090b;
+            --input-border: #3f3f46;
+            --input-focus: #ef4444;
+            --input-focus-ring: rgba(239, 68, 68, 0.25);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        
         body {
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
             min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* ═══ Animated Background ═══ */
-        .bg-orbs {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0; overflow: hidden;
-        }
-        .orb {
-            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.3;
-            animation: orbFloat 20s ease-in-out infinite alternate;
-        }
-        .orb-1 { width: 500px; height: 500px; background: #4f46e5; top: -10%; left: -5%; animation-delay: 0s; }
-        .orb-2 { width: 400px; height: 400px; background: #7c3aed; bottom: -10%; right: -5%; animation-delay: -7s; }
-        .orb-3 { width: 300px; height: 300px; background: #2563eb; top: 40%; left: 50%; animation-delay: -14s; }
-        @keyframes orbFloat {
-            0% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -40px) scale(1.1); }
-            66% { transform: translate(-20px, 30px) scale(0.95); }
-            100% { transform: translate(15px, -15px) scale(1.05); }
+            line-height: 1.5;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* ═══ Header ═══ */
         .header {
-            position: sticky; top: 0; z-index: 100;
-            background: var(--bg-glass-strong);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 14px 28px;
+            position: sticky; top: 0; z-index: 50;
+            background-color: rgba(var(--bg-surface-rgb), 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 72px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-surface); opacity: 0.98; backdrop-filter: none;
+        }
+        
+        .header-content {
+            width: 100%; max-width: 1200px;
             display: flex; align-items: center; justify-content: space-between;
         }
-        .header-left { display: flex; align-items: center; gap: 14px; }
+        .brand-section { display: flex; align-items: center; gap: 16px; }
         .logo {
-            width: 40px; height: 40px; border-radius: var(--radius-sm);
+            width: 36px; height: 36px; border-radius: var(--radius-sm);
             object-fit: cover;
-            border: 2px solid var(--accent);
-            box-shadow: 0 0 20px var(--accent-glow);
-            transition: transform 0.3s; 
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
         }
-        .logo:hover { transform: scale(1.1) rotate(5deg); }
-        .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand span {
-            background: linear-gradient(135deg, var(--accent-bright), var(--cyan));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .version { font-size: 10px; color: var(--text-muted); font-weight: 500; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-        .header-right { display: flex; gap: 12px; align-items: center; }
+        .brand-text { display: flex; flex-direction: column; }
+        .brand-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-main); line-height: 1.2; }
+        .version { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .header-actions { display: flex; align-items: center; gap: 12px; }
 
-        /* ═══ Status Pill ═══ */
+        /* ═══ Buttons & Controls ═══ */
+        .icon-btn {
+            background: var(--bg-base); border: 1px solid var(--border);
+            border-radius: var(--radius-full); width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px; color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+        .icon-btn:hover { background: var(--bg-surface-hover); color: var(--text-main); transform: scale(1.05); }
+
+        .btn {
+            padding: 8px 16px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s ease; border: 1px solid transparent;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: inherit;
+        }
+        .btn:active { transform: translateY(1px); }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-text);
+            border-color: var(--primary-border);
+            box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+        .btn-primary:hover { background-color: var(--primary-hover); box-shadow: 0 4px 12px var(--primary-glow); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        .btn-outline {
+            background-color: transparent;
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+        .btn-outline:hover { background-color: var(--bg-surface-hover); border-color: var(--border-hover); }
+
+        .btn-danger-outline {
+            background-color: transparent;
+            color: var(--red-text);
+            border-color: var(--red-border);
+        }
+        .btn-danger-outline:hover { background-color: var(--red-bg); }
+
         .status-pill {
             display: flex; align-items: center; gap: 8px;
-            padding: 8px 18px; border-radius: 50px;
-            font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
-            cursor: pointer; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            text-transform: uppercase;
+            padding: 6px 14px; border-radius: var(--radius-full);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s ease; user-select: none;
+            background: var(--bg-surface); border: 1px solid var(--border);
         }
-        .status-pill.active {
-            background: rgba(52, 211, 153, 0.1);
-            border: 1px solid rgba(52, 211, 153, 0.3);
-            color: var(--green);
-            box-shadow: 0 0 20px var(--green-glow);
-        }
-        .status-pill.paused {
-            background: rgba(248, 113, 113, 0.1);
-            border: 1px solid rgba(248, 113, 113, 0.3);
-            color: var(--red);
-        }
-        .status-pill:hover { transform: scale(1.05); }
+        .status-pill:hover { transform: scale(1.02); }
+        .status-pill.active { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); }
+        .status-pill.paused { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+        
         .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .active .dot { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
-        .paused .dot { background: var(--red); }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+        .active .dot { background: var(--green-text); box-shadow: 0 0 8px var(--green-text); }
+        .paused .dot { background: var(--red-text); }
 
-        /* ═══ Main Container ═══ */
-        .main { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
-
-        /* ═══ Stats Row ═══ */
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-        .stat {
-            background: var(--bg-glass);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: 22px 20px;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative; overflow: hidden;
+        /* ═══ Main Layout ═══ */
+        .layout {
+            max-width: 1200px; margin: 0 auto; padding: 32px 24px;
+            display: grid; grid-template-columns: 240px 1fr; gap: 32px;
         }
-        .stat::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            opacity: 0; transition: opacity 0.4s;
-        }
-        .stat:hover { transform: translateY(-4px); border-color: rgba(108,143,255,0.2); }
-        .stat:hover::before { opacity: 1; }
-        .stat-val {
-            font-size: 36px; font-weight: 900; letter-spacing: -1px;
-            background: linear-gradient(135deg, var(--accent-bright), var(--cyan));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-
-        /* ═══ Tab Bar ═══ */
-        .tab-bar {
-            display: flex; gap: 3px;
-            background: var(--bg-glass);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 4px; margin-bottom: 24px;
-        }
-        .tab-btn {
-            flex: 1; padding: 13px 10px; border-radius: 11px;
-            text-align: center; font-size: 13px; font-weight: 600;
-            color: var(--text-dim); cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none; background: none; font-family: inherit;
-        }
-        .tab-btn:hover { color: var(--text); background: rgba(108,143,255,0.06); }
-        .tab-btn.on {
-            background: linear-gradient(135deg, rgba(108,143,255,0.2), rgba(167,139,250,0.15));
-            color: white; border: 1px solid rgba(108,143,255,0.3);
-            box-shadow: 0 4px 16px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.05);
+        @media (max-width: 860px) {
+            .layout { grid-template-columns: 1fr; }
         }
 
-        /* ═══ Tab Panels ═══ */
-        .panel { display: none; animation: fadeUp 0.4s ease; }
+        /* ═══ Sidebar Nav ═══ */
+        .sidebar { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 104px; }
+        .nav-item {
+            padding: 10px 16px; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 500; color: var(--text-muted);
+            cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 12px;
+            border: 1px solid transparent; background: transparent;
+            text-align: left; font-family: inherit; width: 100%;
+        }
+        .nav-item:hover { color: var(--text-main); background: var(--bg-surface-hover); }
+        .nav-item.on {
+            color: var(--primary); background: var(--bg-surface);
+            border-color: var(--border); box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+        .nav-icon { font-size: 16px; }
+
+        /* ═══ Main Content Area ═══ */
+        .content { display: flex; flex-direction: column; gap: 24px; }
+        .panel { display: none; animation: fadeIn 0.3s ease; }
         .panel.on { display: block; }
-        @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
 
-        /* ═══ Glass Card ═══ */
-        .glass {
-            background: var(--bg-glass);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: 28px;
-            margin-bottom: 20px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative; overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        /* ═══ Stats Header ═══ */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow-card);
+            display: flex; flex-direction: column; gap: 4px;
         }
-        .glass::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.1), transparent 95%);
-        }
-        .glass:hover { border-color: var(--glass-border-hover); box-shadow: 0 12px 48px rgba(0,0,0,0.4); transform: translateY(-2px); }
-        .glass-title {
-            font-size: 15px; font-weight: 700; margin-bottom: 20px;
-            display: flex; align-items: center; gap: 10px;
-            letter-spacing: -0.3px;
-        }
+        .stat-val { font-size: 28px; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
+        .stat-lbl { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* ═══ Form Controls ═══ */
-        .fg { margin-bottom: 22px; }
-        .fl { display: block; font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        /* ═══ Cards ═══ */
+        .card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 24px;
+        }
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--text-main); }
+        .card-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+
+        /* ═══ Form Elements ═══ */
+        .fg { margin-bottom: 20px; }
+        .fl { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; }
         .fi {
-            width: 100%; padding: 13px 18px;
-            background: rgba(255,255,255,0.03);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm);
-            color: var(--text); font-size: 14px; font-family: inherit;
-            transition: all 0.3s; outline: none;
+            width: 100%; padding: 10px 14px;
+            background: var(--input-bg); border: 1px solid var(--input-border);
+            border-radius: var(--radius-sm); color: var(--text-main);
+            font-size: 14px; font-family: inherit; transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
         }
-        .fi:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-glow); background: rgba(108,143,255,0.03); }
-        .fi::placeholder { color: var(--text-muted); }
+        .fi:focus { outline: none; border-color: var(--input-focus); box-shadow: 0 0 0 3px var(--input-focus-ring); }
+        .fi::placeholder { color: var(--text-dim); }
 
         /* ═══ Chips ═══ */
-        .chips { display: flex; flex-wrap: wrap; gap: 10px; }
-        .chip {
-            padding: 10px 18px; border-radius: 50px;
+        .chips, .radios { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip, .radio {
+            padding: 8px 16px; border-radius: var(--radius-full);
             font-size: 13px; font-weight: 500; cursor: pointer;
-            border: 1.5px solid var(--border);
-            background: rgba(255,255,255,0.02);
-            color: var(--text-dim);
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            user-select: none;
+            border: 1px solid var(--border); background: var(--bg-base);
+            color: var(--text-muted); transition: all 0.2s ease; user-select: none;
         }
-        .chip:hover { border-color: var(--accent); color: var(--text); transform: translateY(-1px); }
-        .chip.sel {
-            background: linear-gradient(135deg, rgba(108,143,255,0.15), rgba(167,139,250,0.1));
-            border-color: var(--accent); color: var(--accent-bright); font-weight: 700;
-            box-shadow: 0 0 16px rgba(108,143,255,0.15);
+        .chip:hover, .radio:hover { border-color: var(--border-hover); color: var(--text-main); background: var(--bg-surface-hover); }
+        .chip.sel, .radio.sel {
+            background: var(--primary-glow); border-color: var(--primary);
+            color: var(--primary); font-weight: 600;
         }
 
-        /* ═══ Radio Options ═══ */
-        .radios { display: flex; gap: 10px; flex-wrap: wrap; }
-        .radio {
-            padding: 11px 22px; border-radius: var(--radius-sm);
-            font-size: 13px; font-weight: 500; cursor: pointer;
-            border: 1.5px solid var(--border);
-            background: rgba(255,255,255,0.02);
-            color: var(--text-dim); transition: all 0.3s;
-        }
-        .radio:hover { border-color: var(--accent); }
-        .radio.sel {
-            background: rgba(108,143,255,0.12); border-color: var(--accent);
-            color: var(--accent-bright); font-weight: 700;
-        }
-
-        /* ═══ Buttons ═══ */
-        .btn {
-            padding: 13px 28px; border-radius: var(--radius-sm);
-            font-size: 14px; font-weight: 700; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none; font-family: inherit;
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            letter-spacing: 0.3px; position: relative; overflow: hidden;
-        }
-        .btn:active { transform: scale(0.96); }
-        .btn::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-            transition: left 0.5s;
-        }
-        .btn:hover::before { left: 100%; }
-        .btn-primary {
-            background: linear-gradient(135deg, #5B7FFF, #7C5CFC);
-            color: white;
-            box-shadow: 0 4px 16px rgba(91,127,255,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(91,127,255,0.4); }
-        .btn-primary:active { transform: translateY(0); }
-        .btn-green {
-            background: linear-gradient(135deg, #059669, #10B981);
-            color: white;
-            box-shadow: 0 4px 16px rgba(5,150,105,0.3);
-        }
-        .btn-green:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(5,150,105,0.4); }
-        .btn-outline {
-            background: transparent;
-            color: var(--accent-bright);
-            border: 1.5px solid rgba(108,143,255,0.3);
-        }
-        .btn-outline:hover { background: rgba(108,143,255,0.08); transform: translateY(-2px); }
-        .btn-ghost {
-            background: rgba(248,113,113,0.08);
-            color: var(--red);
-            border: 1.5px solid rgba(248,113,113,0.2);
-        }
-        .btn-ghost:hover { background: rgba(248,113,113,0.15); transform: translateY(-2px); }
-        .btn-amber {
-            background: linear-gradient(135deg, #D97706, #F59E0B);
-            color: #1a1a2e;
-            box-shadow: 0 4px 16px rgba(217,119,6,0.3);
-        }
-        .btn-amber:hover { transform: translateY(-2px); }
-        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
-        .btn-stack { display: flex; flex-direction: column; gap: 12px; }
-
-        /* ═══ Upload Zone ═══ */
+        /* ═══ Upload ═══ */
         .upload {
-            border: 2px dashed rgba(108,143,255,0.2); border-radius: var(--radius);
-            padding: 44px 20px; text-align: center; cursor: pointer;
-            transition: all 0.4s; position: relative;
-            background: rgba(108,143,255,0.02);
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 40px 20px; text-align: center; cursor: pointer;
+            transition: all 0.2s ease; background: var(--bg-base); position: relative;
         }
-        .upload:hover, .upload.over { border-color: var(--accent); background: rgba(108,143,255,0.06); }
+        .upload:hover, .upload.over { border-color: var(--primary); background: var(--primary-glow); }
         .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-        .upload-icon { font-size: 44px; margin-bottom: 14px; filter: drop-shadow(0 4px 12px rgba(108,143,255,0.3)); }
-        .upload-text { font-size: 14px; color: var(--text-dim); }
-        .upload-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        .upload-icon { font-size: 32px; margin-bottom: 12px; }
+        .upload-text { font-size: 14px; font-weight: 500; color: var(--text-main); }
+        .upload-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
         /* ═══ History Items ═══ */
+        .hist-list { display: flex; flex-direction: column; gap: 12px; }
         .hist {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 20px; border-radius: 12px;
-            border: 1px solid var(--border); margin-bottom: 10px;
-            transition: all 0.3s;
-            background: rgba(255,255,255,0.01);
+            padding: 16px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border); background: var(--bg-base);
+            transition: all 0.2s ease;
         }
-        .hist:hover { border-color: rgba(108,143,255,0.2); background: rgba(108,143,255,0.03); transform: translateX(4px); }
-        .hist-date { font-weight: 700; font-size: 14px; }
-        .hist-meta { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-        .badge { padding: 5px 14px; border-radius: 50px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
-        .badge-ok { background: rgba(52,211,153,0.12); color: var(--green); }
-        .badge-wait { background: rgba(251,191,36,0.12); color: var(--orange); }
+        .hist:hover { border-color: var(--border-hover); transform: translateX(2px); }
+        .hist-date { font-weight: 600; font-size: 14px; color: var(--text-main); }
+        .hist-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .badge { padding: 4px 12px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+        .badge-ok { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+        .badge-wait { background: var(--orange-bg); color: var(--orange-text); border: 1px solid var(--orange-border); }
 
         /* ═══ Schedule Cards ═══ */
-        .sched-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+        .sched-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
         .sched {
-            background: linear-gradient(135deg, rgba(108,143,255,0.06), rgba(167,139,250,0.04));
-            border: 1px solid rgba(108,143,255,0.15);
-            border-radius: 14px; padding: 24px; text-align: center;
-            transition: transform 0.3s;
+            background: var(--bg-base); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 20px; text-align: center;
         }
-        .sched:hover { transform: scale(1.02); }
-        .sched-time {
-            font-size: 32px; font-weight: 900; letter-spacing: -1px;
-            background: linear-gradient(135deg, var(--accent-bright), var(--cyan));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .sched-lbl { font-size: 11px; color: var(--text-dim); margin-top: 8px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        .sched-time { font-size: 24px; font-weight: 700; color: var(--text-main); margin: 8px 0 4px; }
+        .sched-lbl { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
         /* ═══ Action Cards ═══ */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
         .action-card {
-            background: var(--bg-glass);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            padding: 24px;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px; text-align: left;
+            cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm);
         }
-        .action-card:hover { border-color: var(--accent); transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
-        .action-card:active { transform: translateY(0) scale(0.98); }
-        .action-icon { font-size: 32px; margin-bottom: 12px; transition: transform 0.3s; }
-        .action-card:hover .action-icon { transform: scale(1.1) rotate(5deg); }
-        .action-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-        .action-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+        .action-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .action-icon { font-size: 24px; margin-bottom: 12px; }
+        .action-title { font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+        .action-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
-        /* ═══ Toast ═══ */
+        /* ═══ Misc ═══ */
         .toast {
-            position: fixed; bottom: 28px; right: 28px; z-index: 9999;
-            padding: 16px 26px; border-radius: 14px;
-            font-size: 14px; font-weight: 600;
-            backdrop-filter: blur(20px);
-            animation: toastIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+            padding: 14px 20px; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 500;
+            animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-lg); color: white;
         }
-        .toast-ok { background: rgba(5,150,105,0.9); color: white; }
-        .toast-err { background: rgba(220,38,38,0.9); color: white; }
+        .toast-ok { background: #10b981; }
+        .toast-err { background: #ef4444; }
         @keyframes toastIn { from { opacity:0; transform: translateY(20px) scale(0.95); } to { opacity:1; transform: translateY(0) scale(1); } }
-
-        /* ═══ Spinner ═══ */
-        .spin { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: sp 0.5s linear infinite; display: inline-block; vertical-align: middle; }
+        
+        .spin {
+            width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: currentColor; border-radius: 50%;
+            animation: sp 0.6s linear infinite; display: inline-block; vertical-align: middle;
+        }
         @keyframes sp { to { transform: rotate(360deg); } }
-
-        /* ═══ Send PDF Report Button (Header) ═══ */
-        .btn-send-report {
-            padding: 10px 22px; border-radius: 50px;
-            font-size: 13px; font-weight: 700; cursor: pointer;
-            border: none; font-family: inherit;
-            display: inline-flex; align-items: center; gap: 8px;
-            background: linear-gradient(135deg, #10B981, #059669);
-            color: white;
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), 0 4px 16px rgba(5, 150, 105, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: reportGlow 3s ease-in-out infinite alternate;
-            letter-spacing: 0.3px;
-            position: relative; overflow: hidden;
-            white-space: nowrap;
-        }
-        .btn-send-report:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.6), 0 8px 28px rgba(5, 150, 105, 0.4);
-        }
-        .btn-send-report:active { transform: translateY(0) scale(0.97); }
-        .btn-send-report::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.6s;
-        }
-        .btn-send-report:hover::before { left: 100%; }
-        .btn-send-report.sending {
-            background: linear-gradient(135deg, #6366F1, #8B5CF6);
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
-            animation: none;
-            pointer-events: none;
-        }
-        @keyframes reportGlow {
-            0% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), 0 4px 16px rgba(5, 150, 105, 0.2); }
-            100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.5), 0 4px 20px rgba(5, 150, 105, 0.35); }
-        }
-
-        /* ═══ Last Updated ═══ */
-        .last-updated {
-            text-align: center; font-size: 11px; color: var(--text-muted);
-            margin-bottom: 16px; letter-spacing: 0.5px;
-        }
-
-        /* ═══ Responsive ═══ */
-        @media (max-width: 768px) {
-            .stats { grid-template-columns: repeat(2, 1fr); }
-            .tab-bar { flex-wrap: wrap; }
-            .sched-grid, .action-grid { grid-template-columns: 1fr; }
-            .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
-            .main { padding: 16px 12px 60px; }
-            .btn-send-report { font-size: 12px; padding: 8px 16px; }
-        }
-        @media (max-width: 480px) {
-            .stats { grid-template-columns: 1fr 1fr; }
-            .stat-val { font-size: 28px; }
-            .btn-send-report span.btn-label { display: none; }
-        }
+        
+        .last-updated { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: -20px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-<div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
 <!-- Header -->
 <header class="header">
-    <div class="header-left">
-        <img src="/static/weblogo.png" alt="JS" class="logo" onerror="this.style.display='none'">
-        <div><div class="brand"><span>JobScout</span></div><div class="version">v2.2 • Command Center</div></div>
-    </div>
-    <div class="header-right">
-        <button class="btn-send-report" id="btnReport" onclick="sendReport(this)">
-            📧 <span class="btn-label">Send PDF Report</span>
-        </button>
-        <div id="pill" class="status-pill active" onclick="toggleStatus()"><span class="dot"></span><span id="pillTxt">Active</span></div>
+    <div class="header-content">
+        <div class="brand-section">
+            <img src="/static/weblogo.png" alt="JS" class="logo" onerror="this.style.display='none'">
+            <div class="brand-text">
+                <h1>JobScout</h1>
+                <span class="version">Command Center</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button id="themeToggle" class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="themeIcon">🌙</span>
+            </button>
+            <div id="pill" class="status-pill active" onclick="toggleStatus()">
+                <span class="dot"></span><span id="pillTxt">Active</span>
+            </div>
+            <button class="btn btn-primary" id="btnReport" onclick="sendReport(this)">
+                <span class="icon">📧</span> <span class="btn-label">Send PDF Report</span>
+            </button>
+        </div>
     </div>
 </header>
 
-<!-- Main -->
-<main class="main">
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat"><div class="stat-val" id="sP">—</div><div class="stat-lbl">Pending Today</div></div>
-        <div class="stat"><div class="stat-val" id="sT">—</div><div class="stat-lbl">Total Scraped</div></div>
-        <div class="stat"><div class="stat-val" id="sD">—</div><div class="stat-lbl">Digests Sent</div></div>
-        <div class="stat"><div class="stat-val" id="sS">4</div><div class="stat-lbl">Job Sources</div></div>
-    </div>
-    <div class="last-updated" id="lastUpdated"></div>
+<!-- Main Layout -->
+<main class="layout">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <button class="nav-item on" onclick="tab('profile',this)">
+            <span class="nav-icon">👤</span> Profile
+        </button>
+        <button class="nav-item" onclick="tab('schedule',this)">
+            <span class="nav-icon">📅</span> Schedule
+        </button>
+        <button class="nav-item" onclick="tab('resume',this)">
+            <span class="nav-icon">📄</span> Resume
+        </button>
+        <button class="nav-item" onclick="tab('history',this)">
+            <span class="nav-icon">📬</span> History
+        </button>
+        <button class="nav-item" onclick="tab('actions',this)">
+            <span class="nav-icon">⚡</span> Actions
+        </button>
+    </aside>
 
-    <!-- Tabs -->
-    <div class="tab-bar">
-        <button class="tab-btn on" onclick="tab('profile',this)">👤 Profile</button>
-        <button class="tab-btn" onclick="tab('schedule',this)">📅 Schedule</button>
-        <button class="tab-btn" onclick="tab('resume',this)">📄 Resume</button>
-        <button class="tab-btn" onclick="tab('history',this)">📬 History</button>
-        <button class="tab-btn" onclick="tab('actions',this)">⚡ Actions</button>
-    </div>
+    <!-- Content -->
+    <div class="content">
+        
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-card"><span class="stat-lbl">Pending Today</span><span class="stat-val" id="sP">—</span></div>
+            <div class="stat-card"><span class="stat-lbl">Total Scraped</span><span class="stat-val" id="sT">—</span></div>
+            <div class="stat-card"><span class="stat-lbl">Digests Sent</span><span class="stat-val" id="sD">—</span></div>
+            <div class="stat-card"><span class="stat-lbl">Job Sources</span><span class="stat-val" id="sS">4</span></div>
+        </div>
+        <div class="last-updated" id="lastUpdated"></div>
 
-    <!-- ═══ Profile Panel ═══ -->
-    <div id="p-profile" class="panel on">
-        <div class="glass">
-            <div class="glass-title">📧 Identity</div>
-            <div class="fg"><label class="fl">Email Address</label><input class="fi" id="iEmail" type="email" placeholder="your@email.com"></div>
-            <div class="fg"><label class="fl">Qualification / Degree</label><input class="fi" id="iQual" placeholder="e.g., B.Tech, BSc, BCA, Law, MBA"></div>
+        <!-- ═══ Profile Panel ═══ -->
+        <div id="p-profile" class="panel on">
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">📧</span><h2 class="card-title">Identity</h2>
+                </div>
+                <div class="fg">
+                    <label class="fl">Email Address</label>
+                    <input class="fi" id="iEmail" type="email" placeholder="your@email.com">
+                </div>
+                <div class="fg">
+                    <label class="fl">Qualification / Degree</label>
+                    <input class="fi" id="iQual" placeholder="e.g., B.Tech, BSc, BCA, Law, MBA">
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">🎯</span><h2 class="card-title">Job Sectors</h2>
+                </div>
+                <p class="card-desc">Select the government sectors you're interested in.</p>
+                <div class="chips" id="chipBox"></div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">💼</span><h2 class="card-title">Experience Level</h2>
+                </div>
+                <div class="radios" id="expBox"></div>
+            </div>
+            
+            <div style="margin-top: 16px;">
+                <button class="btn btn-primary" onclick="saveProfile()" id="btnSave">💾 Save Profile</button>
+            </div>
         </div>
-        <div class="glass">
-            <div class="glass-title">🎯 Job Sectors</div>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Select sectors you're interested in</p>
-            <div class="chips" id="chipBox"></div>
-        </div>
-        <div class="glass">
-            <div class="glass-title">💼 Experience</div>
-            <div class="radios" id="expBox"></div>
-        </div>
-        <div class="btn-group">
-            <button class="btn btn-primary" onclick="saveProfile()" id="btnSave">💾 Save Profile</button>
-        </div>
-    </div>
 
-    <!-- ═══ Schedule Panel ═══ -->
-    <div id="p-schedule" class="panel">
-        <div class="glass">
-            <div class="glass-title">📅 Digest Schedule</div>
-            <p style="color:var(--text-dim);font-size:14px;line-height:1.7;margin-bottom:8px;">You receive <strong>two professional PDF digests</strong> daily with all matched government jobs, delivered right to your inbox.</p>
-            <div class="sched-grid">
-                <div class="sched"><div style="font-size:28px;margin-bottom:8px;">🌅</div><div class="sched-time">10:00 AM</div><div class="sched-lbl">Morning Digest</div></div>
-                <div class="sched"><div style="font-size:28px;margin-bottom:8px;">🌇</div><div class="sched-time">6:00 PM</div><div class="sched-lbl">Evening Digest</div></div>
+        <!-- ═══ Schedule Panel ═══ -->
+        <div id="p-schedule" class="panel">
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">📅</span><h2 class="card-title">Digest Schedule</h2>
+                </div>
+                <p class="card-desc">You receive <strong>two professional PDF digests</strong> daily with all matched government jobs, delivered right to your inbox.</p>
+                <div class="sched-grid">
+                    <div class="sched">
+                        <div style="font-size:32px;">🌅</div>
+                        <div class="sched-time">10:00 AM</div>
+                        <div class="sched-lbl">Morning Digest</div>
+                    </div>
+                    <div class="sched">
+                        <div style="font-size:32px;">🌇</div>
+                        <div class="sched-time">6:00 PM</div>
+                        <div class="sched-lbl">Evening Digest</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">🔔</span><h2 class="card-title">Deadline Reminders</h2>
+                </div>
+                <p class="card-desc" style="margin-bottom:0;">Automatic reminders are sent at <strong>3 days</strong>, <strong>1 day</strong>, and the <strong>last day</strong> of application deadlines.</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">⚙️</span><h2 class="card-title">System Status</h2>
+                </div>
+                <div id="schedStatus" style="font-size:14px;color:var(--text-main);">Checking...</div>
             </div>
         </div>
-        <div class="glass">
-            <div class="glass-title">🔔 Deadline Reminders</div>
-            <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">Automatic reminders at <strong>3 days</strong>, <strong>1 day</strong>, and <strong>last day</strong> of application deadlines.</p>
-        </div>
-        <div class="glass">
-            <div class="glass-title">💓 Database Keep-Alive</div>
-            <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">Supabase free-tier databases sleep after 7 days of inactivity. JobScout automatically <strong>pings all 3 tables every 8 hours</strong> (3× daily) to keep your database alive 24/7.</p>
-        </div>
-        <div class="glass">
-            <div class="glass-title">⚙️ Scheduler Status</div>
-            <div id="schedStatus" style="font-size:13px;color:var(--text-dim);">Checking...</div>
-        </div>
-    </div>
 
-    <!-- ═══ Resume Panel ═══ -->
-    <div id="p-resume" class="panel">
-        <div class="glass">
-            <div class="glass-title">📄 Upload Resume</div>
-            <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px;line-height:1.6;">Upload your resume and our AI extracts your skills, qualifications, and experience to improve job matching accuracy.</p>
-            <div class="upload" id="upZone">
-                <input type="file" id="upFile" accept=".pdf,.doc,.docx,.txt" onchange="uploadResume(event)">
-                <div class="upload-icon">📎</div>
-                <div class="upload-text">Drag & drop your resume or click to browse</div>
-                <div class="upload-hint">PDF, DOC, DOCX, TXT — Max 5MB</div>
+        <!-- ═══ Resume Panel ═══ -->
+        <div id="p-resume" class="panel">
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">📄</span><h2 class="card-title">Upload Resume</h2>
+                </div>
+                <p class="card-desc">Upload your resume and our AI extracts your skills, qualifications, and experience to improve job matching accuracy.</p>
+                <div class="upload" id="upZone">
+                    <input type="file" id="upFile" accept=".pdf,.doc,.docx,.txt" onchange="uploadResume(event)">
+                    <div class="upload-icon">📎</div>
+                    <div class="upload-text">Drag & drop your resume or click to browse</div>
+                    <div class="upload-hint">PDF, DOC, DOCX, TXT — Max 5MB</div>
+                </div>
+                <div id="upStatus" style="margin-top:16px;display:none;font-size:14px;"></div>
             </div>
-            <div id="upStatus" style="margin-top:16px;display:none;"></div>
+            <div class="card" id="resumeCard" style="display:none;">
+                <div class="card-header">
+                    <span class="nav-icon">✅</span><h2 class="card-title">Resume on File</h2>
+                </div>
+                <div id="resumeInfo" style="font-size:14px;color:var(--text-main);line-height:1.6;"></div>
+            </div>
         </div>
-        <div class="glass" id="resumeCard" style="display:none;">
-            <div class="glass-title">✅ Resume on File</div>
-            <div id="resumeInfo" style="font-size:14px;color:var(--text-dim);line-height:1.8;"></div>
-        </div>
-    </div>
 
-    <!-- ═══ History Panel ═══ -->
-    <div id="p-history" class="panel">
-        <div class="glass">
-            <div class="glass-title">📬 Digest History</div>
-            <div id="histList"><p style="color:var(--text-muted);text-align:center;padding:30px;">Loading...</p></div>
+        <!-- ═══ History Panel ═══ -->
+        <div id="p-history" class="panel">
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">📬</span><h2 class="card-title">Digest History</h2>
+                </div>
+                <div id="histList" class="hist-list">
+                    <p style="color:var(--text-muted);text-align:center;padding:30px;">Loading...</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- ═══ Actions Panel ═══ -->
-    <div id="p-actions" class="panel">
-        <div class="action-grid">
-            <div class="action-card" onclick="testEmail(this)">
-                <div class="action-icon">📧</div>
-                <div class="action-title" id="actTest">Test Email Service</div>
-                <div class="action-desc">Send a test email to verify Brevo integration is working</div>
+        <!-- ═══ Actions Panel ═══ -->
+        <div id="p-actions" class="panel">
+            <div class="action-grid">
+                <div class="action-card" onclick="testEmail(this)">
+                    <div class="action-icon">📧</div>
+                    <div class="action-title" id="actTest">Test Email Service</div>
+                    <div class="action-desc">Send a test email to verify integration is working</div>
+                </div>
+                <div class="action-card" onclick="triggerDigest(this)">
+                    <div class="action-icon">📄</div>
+                    <div class="action-title" id="actDigest">Send Digest Now</div>
+                    <div class="action-desc">Manually trigger PDF digest for pending jobs</div>
+                </div>
+                <div class="action-card" onclick="triggerScrape(this)">
+                    <div class="action-icon">🔍</div>
+                    <div class="action-title" id="actScrape">Run Scraper</div>
+                    <div class="action-desc">Trigger immediate scrape of all job portals</div>
+                </div>
+                <div class="action-card" onclick="toggleStatus()">
+                    <div class="action-icon" id="actToggleIcon">⏸️</div>
+                    <div class="action-title" id="actToggle">Pause Notifications</div>
+                    <div class="action-desc">Toggle notification delivery on or off</div>
+                </div>
             </div>
-            <div class="action-card" onclick="triggerDigest(this)">
-                <div class="action-icon">📄</div>
-                <div class="action-title" id="actDigest">Send Digest Now</div>
-                <div class="action-desc">Manually trigger PDF digest for all pending jobs</div>
+            
+            <div class="card" style="margin-top:24px;">
+                <div class="card-header">
+                    <span class="nav-icon">📬</span><h2 class="card-title">Brevo Email Status</h2>
+                </div>
+                <div id="brevoStatus" style="font-size:14px;color:var(--text-main);margin-bottom:16px;">Click to check...</div>
+                <button class="btn btn-outline" onclick="verifyBrevo()">🔍 Check Connection</button>
             </div>
-            <div class="action-card" onclick="triggerScrape(this)">
-                <div class="action-icon">🔍</div>
-                <div class="action-title" id="actScrape">Run Scraper</div>
-                <div class="action-desc">Trigger immediate scrape of all 4 job portals</div>
-            </div>
-            <div class="action-card" onclick="toggleStatus()">
-                <div class="action-icon" id="actToggleIcon">⏸️</div>
-                <div class="action-title" id="actToggle">Pause Notifications</div>
-                <div class="action-desc">Toggle notification delivery on/off</div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="nav-icon">🔗</span><h2 class="card-title">Quick Links</h2>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <a href="/health" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:14px;">🩺 Health Check &rarr;</a>
+                    <a href="/api/profile" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:14px;">📊 Profile JSON &rarr;</a>
+                    <a href="/api/digest-status" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:14px;">📋 Digest Status &rarr;</a>
+                    <a href="/api/verify-brevo" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:14px;">📬 Brevo Diagnostics &rarr;</a>
+                </div>
             </div>
         </div>
-        <div class="glass" style="margin-top:18px;">
-            <div class="glass-title">📬 Brevo Email Status</div>
-            <div id="brevoStatus" style="font-size:13px;color:var(--text-dim);">Click to check...</div>
-            <button class="btn btn-outline" style="margin-top:14px;" onclick="verifyBrevo()">🔍 Check Brevo Connection</button>
-        </div>
-        <div class="glass" style="margin-top:18px;">
-            <div class="glass-title">🔗 Quick Links</div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <a href="/health" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;transition:color 0.2s;">🩺 Health Check →</a>
-                <a href="/api/profile" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📊 Profile JSON →</a>
-                <a href="/api/digest-status" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📋 Digest Status →</a>
-                <a href="/api/verify-brevo" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">📬 Brevo Diagnostics →</a>
-                <a href="/api/scheduler-status" target="_blank" style="color:var(--accent-bright);text-decoration:none;font-size:14px;">⚙️ Scheduler Status →</a>
-            </div>
-        </div>
+        
     </div>
 </main>
 
 <script>
+// Theme Initialization
+(function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+})();
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon();
+}
+
+function updateThemeIcon() {
+    const icon = document.getElementById('themeIcon');
+    if(icon) {
+        icon.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+    }
+}
+
 const INTERESTS=[
     {n:"PSU",e:"🏭"},{n:"Banking",e:"🏦"},{n:"Railways",e:"🚂"},{n:"Defence",e:"🎖️"},
     {n:"IT/Software",e:"💻"},{n:"SSC",e:"📊"},{n:"UPSC",e:"🏛️"},{n:"Teaching",e:"📚"},
@@ -606,10 +605,13 @@ const INTERESTS=[
 const EXPS=["Fresher","0-2 yrs","2+ yrs"];
 let selInt=[],selExp="Fresher",curSt="active";
 
-document.addEventListener("DOMContentLoaded",()=>{renderChips();renderExps();loadProfile();loadStats();loadScheduler();updateTimestamp();});
+document.addEventListener("DOMContentLoaded",()=>{
+    updateThemeIcon();
+    renderChips();renderExps();loadProfile();loadStats();loadScheduler();updateTimestamp();
+});
 
 function tab(id,el){
-    document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("on"));
+    document.querySelectorAll(".nav-item").forEach(t=>t.classList.remove("on"));
     document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));
     el.classList.add("on");document.getElementById("p-"+id).classList.add("on");
     if(id==="history")loadHistory();if(id==="schedule")loadScheduler();if(id==="actions")verifyBrevo();
@@ -677,14 +679,14 @@ async function loadHistory(){
         document.getElementById("histList").innerHTML=h.map(i=>`
             <div class="hist"><div><div class="hist-date">📧 ${i.date}</div><div class="hist-meta">${i.job_count} jobs • ${i.type||"Digest"}</div></div>
             <span class="badge ${i.sent?'badge-ok':'badge-wait'}">${i.sent?'✅ Sent':'⏳ Pending'}</span></div>`).join("");
-    }catch(e){document.getElementById("histList").innerHTML="<p style='color:var(--text-muted);text-align:center;'>Could not load history.</p>";}
+    }catch(e){document.getElementById("histList").innerHTML="<p style='color:var(--red-text);text-align:center;'>Could not load history.</p>";}
 }
 async function loadScheduler(){
     try{const r=await fetch("/api/scheduler-status");const d=await safeJson(r);if(d._error)throw new Error("Format error");
-        if(d.running){let html="<div style='color:var(--green);font-weight:600;margin-bottom:12px;'>● Running</div>";
+        if(d.running){let html="<div style='color:var(--green-text);font-weight:600;margin-bottom:12px;'>● Running</div>";
             d.jobs.forEach(j=>{html+=`<div style='display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;'><span>${j.name}</span><span style='color:var(--text-muted);'>${j.next_run}</span></div>`;});
             document.getElementById("schedStatus").innerHTML=html;
-        }else{document.getElementById("schedStatus").innerHTML="<span style='color:var(--orange);'>⚠️ Scheduler not running (serverless mode on Vercel)</span>";}
+        }else{document.getElementById("schedStatus").innerHTML="<span style='color:var(--orange-text);'>⚠️ Scheduler not running (serverless mode)</span>";}
     }catch(e){document.getElementById("schedStatus").innerHTML="<span style='color:var(--text-muted);'>Could not fetch status</span>";}
 }
 async function saveProfile(){
@@ -729,7 +731,6 @@ async function testEmail(card){
             if(ct&&ct.includes("application/json")){
                 const d=await r.json();
                 const err=d.error||"Email failed";
-                // Show user-friendly error based on error type
                 if(err.includes('IP_BLOCKED')) toast('❌ IP blocked by Brevo. Disable IP restriction in Brevo dashboard.','err');
                 else if(err.includes('INVALID_API_KEY')) toast('❌ Brevo API key is invalid. Update .env file.','err');
                 else if(err.includes('SENDER_NOT_VERIFIED')) toast('❌ Sender email not verified in Brevo.','err');
@@ -748,8 +749,8 @@ async function verifyBrevo(){
         const r=await fetch('/api/verify-brevo');
         const d=await r.json();
         if(d.status==='ok'){
-            el.innerHTML=`<div style='color:var(--green);font-weight:600;margin-bottom:8px;'>✅ Connected</div>`
-                +`<div style='display:grid;gap:6px;font-size:12px;'>`
+            el.innerHTML=`<div style='color:var(--green-text);font-weight:600;margin-bottom:8px;'>✅ Connected</div>`
+                +`<div style='display:grid;gap:6px;font-size:13px;'>`
                 +`<div>📧 Account: <strong>${d.account}</strong></div>`
                 +`<div>📋 Plan: <strong>${d.plan}</strong> (${d.credits} emails/day)</div>`
                 +`<div>✅ Sender: <strong>${d.sender_email}</strong> (verified)</div>`
@@ -757,13 +758,13 @@ async function verifyBrevo(){
         } else {
             const err=d.error||'Unknown error';
             let hint='';
-            if(err.includes('IP')) hint='<br><a href="https://app.brevo.com/security/authorised_ips" target="_blank" style="color:var(--accent-bright);">Fix: Disable IP restriction →</a>';
+            if(err.includes('IP')) hint='<br><a href="https://app.brevo.com/security/authorised_ips" target="_blank" style="color:var(--primary);">Fix: Disable IP restriction &rarr;</a>';
             else if(err.includes('API KEY')) hint='<br>Fix: Generate new API key at Brevo dashboard';
-            else if(err.includes('SENDER')) hint='<br><a href="https://app.brevo.com/senders/list" target="_blank" style="color:var(--accent-bright);">Fix: Verify sender email →</a>';
-            el.innerHTML=`<div style='color:var(--red);font-weight:600;margin-bottom:8px;'>❌ Error</div><div style='font-size:12px;color:var(--text-dim);word-break:break-word;'>${err}${hint}</div>`;
+            else if(err.includes('SENDER')) hint='<br><a href="https://app.brevo.com/senders/list" target="_blank" style="color:var(--primary);">Fix: Verify sender email &rarr;</a>';
+            el.innerHTML=`<div style='color:var(--red-text);font-weight:600;margin-bottom:8px;'>❌ Error</div><div style='font-size:13px;color:var(--text-muted);word-break:break-word;'>${err}${hint}</div>`;
         }
     }catch(e){
-        el.innerHTML='<span style="color:var(--red);">❌ Could not reach server</span>';
+        el.innerHTML='<span style="color:var(--red-text);">❌ Could not reach server</span>';
     }
 }
 async function triggerDigest(card){
@@ -786,7 +787,7 @@ async function triggerDigest(card){
     t.innerHTML=orig;
 }
 async function sendReport(btn){
-    btn.classList.add('sending');
+    btn.disabled = true;
     const origHTML=btn.innerHTML;
     btn.innerHTML='<span class="spin"></span> <span class="btn-label">Sending...</span>';
     try{const r=await fetch("/api/trigger-digest");
@@ -807,7 +808,7 @@ async function sendReport(btn){
             btn.innerHTML='❌ <span class="btn-label">Failed</span>';
         }
     }catch(e){toast("Network error","err");btn.innerHTML='❌ <span class="btn-label">Error</span>';}
-    setTimeout(()=>{btn.innerHTML=origHTML;btn.classList.remove('sending');},3000);
+    setTimeout(()=>{btn.innerHTML=origHTML;btn.disabled=false;},3000);
 }
 async function triggerScrape(card){
     const t=document.getElementById("actScrape");
@@ -831,13 +832,13 @@ async function uploadResume(ev){
     const s=document.getElementById("upStatus");s.style.display="block";s.innerHTML='<span class="spin"></span> Uploading & analyzing...';
     const fd=new FormData();fd.append("file",f);
     try{const r=await fetch("/api/resume",{method:"POST",body:fd});
-        if(r.ok){s.innerHTML="<span style='color:var(--green);'>✅ Resume uploaded & analyzed!</span>";toast("Resume uploaded! Profile updated.","ok");loadProfile();}
+        if(r.ok){s.innerHTML="<span style='color:var(--green-text);'>✅ Resume uploaded & analyzed!</span>";toast("Resume uploaded! Profile updated.","ok");loadProfile();}
         else{
             const ct=r.headers.get("content-type");
-            if(ct&&ct.includes("application/json")){const d=await r.json();s.innerHTML=`<span style='color:var(--red);'>❌ ${d.error||'Failed'}</span>`;}
-            else s.innerHTML=`<span style='color:var(--red);'>❌ Server error</span>`;
+            if(ct&&ct.includes("application/json")){const d=await r.json();s.innerHTML=`<span style='color:var(--red-text);'>❌ ${d.error||'Failed'}</span>`;}
+            else s.innerHTML=`<span style='color:var(--red-text);'>❌ Server error</span>`;
         }
-    }catch(e){s.innerHTML="<span style='color:var(--red);'>❌ Network error</span>";}
+    }catch(e){s.innerHTML="<span style='color:var(--red-text);'>❌ Network error</span>";}
 }
 const z=document.getElementById("upZone");
 if(z){
