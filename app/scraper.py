@@ -16,9 +16,10 @@ Removed (broken/empty):
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Set
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
 
 # cloudscraper bypasses Cloudflare/WAF blocks on government portals
 # Falls back gracefully if not installed
@@ -152,9 +153,46 @@ class BaseScraper(ABC):
         lines = [line.strip() for line in text.splitlines() if line.strip() and len(line.strip()) > 2]
         return "\n".join(lines)
 
-    def _chunk_text(self, text: str, max_chars: int = 12000) -> List[str]:
+    def _extract_deep_links(self, html: str, base_url: str, max_links: int = 15) -> List[str]:
+        """Extract deep links to individual job pages from the index page."""
+        soup = BeautifulSoup(html, "html.parser")
+        links: List[str] = []
+        seen: Set[str] = set()
+
+        # Try to find the main content area to avoid nav/footer links
+        content_area = soup.find('div', id='post')
+        if not content_area:
+            content_area = soup.body if soup.body else soup
+
+        for a in content_area.find_all("a", href=True):
+            href = a["href"]
+            full_url = urljoin(base_url, href)
+            parsed = urlparse(full_url)
+            
+            # Must be an internal link
+            if parsed.netloc != urlparse(base_url).netloc:
+                continue
+            
+            # Exclude root and common non-job pages
+            path = parsed.path.strip("/")
+            if not path or any(p in path.lower() for p in ["about", "contact", "privacy", "disclaimer", "syllabus", "admitcard", "result", "latestjob"]):
+                continue
+            
+            if full_url not in seen:
+                links.append(full_url)
+                seen.add(full_url)
+                
+            if len(links) >= max_links:
+                break
+                
+        return links
+
+    def _chunk_text(self, text: str, max_chars: int = 12000, url: str = None) -> List[str]:
+        """Chunk text to avoid Gemini API limits, optionally injecting the source URL."""
         if len(text) <= max_chars:
-            return [text]
+            chunk = f"URL: {url}\n\n{text}" if url else text
+            return [chunk]
+            
         chunks = []
         lines = text.split("\n")
         current_chunk = []
@@ -162,14 +200,18 @@ class BaseScraper(ABC):
         for line in lines:
             line_len = len(line) + 1
             if current_len + line_len > max_chars and current_chunk:
-                chunks.append("\n".join(current_chunk))
+                chunk_str = "\n".join(current_chunk)
+                chunks.append(f"URL: {url}\n\n{chunk_str}" if url else chunk_str)
                 current_chunk = [line]
                 current_len = line_len
             else:
                 current_chunk.append(line)
                 current_len += line_len
+                
         if current_chunk:
-            chunks.append("\n".join(current_chunk))
+            chunk_str = "\n".join(current_chunk)
+            chunks.append(f"URL: {url}\n\n{chunk_str}" if url else chunk_str)
+            
         return chunks
 
 
@@ -182,16 +224,22 @@ class SarkariResultScraper(BaseScraper):
     def base_url(self) -> str: return "https://www.sarkariresult.com"
 
     def scrape(self) -> List[str]:
-        urls = [
-            "https://www.sarkariresult.com/",
-            "https://www.sarkariresult.com/latestjob/",
-        ]
+        url = "https://www.sarkariresult.com/latestjob/"
         all_chunks = []
-        for url in urls:
-            html = self._fetch(url)
-            if html:
-                text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text, max_chars=15000))
+        
+        logger.info(f"[{self.source_name}] Fetching index: {url}")
+        html = self._fetch(url)
+        if html:
+            deep_links = self._extract_deep_links(html, url, max_links=15)
+            logger.info(f"[{self.source_name}] Found {len(deep_links)} deep links")
+            
+            for link in deep_links:
+                logger.info(f"[{self.source_name}] Deep fetching: {link}")
+                page_html = self._fetch(link)
+                if page_html:
+                    text = self._clean_html(page_html)
+                    all_chunks.extend(self._chunk_text(text, max_chars=12000, url=link))
+                    
         return all_chunks
 
 
@@ -204,16 +252,22 @@ class FreeJobAlertScraper(BaseScraper):
     def base_url(self) -> str: return "https://www.freejobalert.com"
 
     def scrape(self) -> List[str]:
-        urls = [
-            "https://www.freejobalert.com/government-jobs/",
-            "https://www.freejobalert.com/latest-notifications/",
-        ]
+        url = "https://www.freejobalert.com/latest-notifications/"
         all_chunks = []
-        for url in urls:
-            html = self._fetch(url)
-            if html:
-                text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text, max_chars=15000))
+        
+        logger.info(f"[{self.source_name}] Fetching index: {url}")
+        html = self._fetch(url)
+        if html:
+            deep_links = self._extract_deep_links(html, url, max_links=15)
+            logger.info(f"[{self.source_name}] Found {len(deep_links)} deep links")
+            
+            for link in deep_links:
+                logger.info(f"[{self.source_name}] Deep fetching: {link}")
+                page_html = self._fetch(link)
+                if page_html:
+                    text = self._clean_html(page_html)
+                    all_chunks.extend(self._chunk_text(text, max_chars=12000, url=link))
+                    
         return all_chunks
 
 
@@ -226,16 +280,22 @@ class SarkariExamScraper(BaseScraper):
     def base_url(self) -> str: return "https://www.sarkariexam.com"
 
     def scrape(self) -> List[str]:
-        urls = [
-            "https://www.sarkariexam.com/",
-            "https://www.sarkariexam.com/latest-jobs",
-        ]
+        url = "https://www.sarkariexam.com/latest-jobs"
         all_chunks = []
-        for url in urls:
-            html = self._fetch(url)
-            if html:
-                text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text, max_chars=15000))
+        
+        logger.info(f"[{self.source_name}] Fetching index: {url}")
+        html = self._fetch(url)
+        if html:
+            deep_links = self._extract_deep_links(html, url, max_links=15)
+            logger.info(f"[{self.source_name}] Found {len(deep_links)} deep links")
+            
+            for link in deep_links:
+                logger.info(f"[{self.source_name}] Deep fetching: {link}")
+                page_html = self._fetch(link)
+                if page_html:
+                    text = self._clean_html(page_html)
+                    all_chunks.extend(self._chunk_text(text, max_chars=12000, url=link))
+                    
         return all_chunks
 
 
@@ -248,15 +308,22 @@ class RojgarResultScraper(BaseScraper):
     def base_url(self) -> str: return "https://www.rojgarresult.com"
 
     def scrape(self) -> List[str]:
-        urls = [
-            "https://www.rojgarresult.com/",
-        ]
+        url = "https://www.rojgarresult.com"
         all_chunks = []
-        for url in urls:
-            html = self._fetch(url)
-            if html:
-                text = self._clean_html(html)
-                all_chunks.extend(self._chunk_text(text, max_chars=15000))
+        
+        logger.info(f"[{self.source_name}] Fetching index: {url}")
+        html = self._fetch(url)
+        if html:
+            deep_links = self._extract_deep_links(html, url, max_links=15)
+            logger.info(f"[{self.source_name}] Found {len(deep_links)} deep links")
+            
+            for link in deep_links:
+                logger.info(f"[{self.source_name}] Deep fetching: {link}")
+                page_html = self._fetch(link)
+                if page_html:
+                    text = self._clean_html(page_html)
+                    all_chunks.extend(self._chunk_text(text, max_chars=12000, url=link))
+                    
         return all_chunks
 
 
