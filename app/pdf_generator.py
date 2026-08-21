@@ -333,97 +333,123 @@ class PDFGenerator:
         return {k: grouped[k] for k in sorted_keys}
 
     def _build_job_card(self, job: Job, index: int, total: int) -> list:
-        """Build a clean job card with key information."""
+        """Build a detailed, information-rich job card."""
         elements = []
 
-        # Job number + title
+        # ── Card top border accent ──
+        elements.append(HRFlowable(
+            width="100%", thickness=3, color=ACCENT,
+            spaceBefore=4 * mm, spaceAfter=2 * mm
+        ))
+
+        # ── Job number + title ──
         elements.append(Paragraph(
             f"<b>{index}.</b>  {self._escape(job.title)}",
             self.styles["JobTitle"]
         ))
 
-        # Organization
+        # ── Organization ──
         elements.append(Paragraph(
-            f"{self._escape(job.organization)}",
+            f"🏛️  {self._escape(job.organization)}",
             self.styles["JobOrg"]
         ))
 
-        # ── Key Highlights Table ──
-        highlight_rows = []
+        # ── Description (if available) ──
+        if job.description:
+            elements.append(Paragraph(
+                f"<i>{self._escape(job.description)}</i>",
+                self.styles["JobField"]
+            ))
+            elements.append(Spacer(1, 1 * mm))
 
-        # Salary (prominent)
-        if job.salary:
-            highlight_rows.append(
-                f"<b>💰 Salary:</b>  {self._escape(job.salary)}"
-            )
-
-        # Qualification / Eligibility
-        if job.eligibility:
-            highlight_rows.append(
-                f"<b>📚 Qualification:</b>  {self._escape(job.eligibility)}"
-            )
-
-        # Vacancies
+        # ── Key Details Grid ──
+        # Row 1: Vacancies + Salary (most important, shown first)
+        row1 = []
         if job.vacancies:
-            highlight_rows.append(
-                f"<b>👥 Vacancies:</b>  {self._escape(job.vacancies)}"
-            )
+            row1.append(f"<b>👥 Vacancies:</b>  {self._escape(job.vacancies)}")
+        if job.salary:
+            row1.append(f"<b>💰 Salary/Pay:</b>  {self._escape(job.salary)}")
+        for r in row1:
+            elements.append(Paragraph(r, self.styles["JobHighlight"]))
 
-        # Exam
+        # Row 2: Age Limit + Selection Process
+        row2 = []
+        if job.age_limit:
+            row2.append(f"<b>🎂 Age Limit:</b>  {self._escape(job.age_limit)}")
+        if job.selection_process:
+            row2.append(f"<b>📋 Selection:</b>  {self._escape(job.selection_process)}")
+        for r in row2:
+            elements.append(Paragraph(r, self.styles["JobField"]))
+
+        # Row 3: Full Eligibility / Qualification
+        if job.eligibility:
+            elements.append(Paragraph(
+                f"<b>📚 Eligibility:</b>  {self._escape(job.eligibility)}",
+                self.styles["JobField"]
+            ))
+
+        # Row 4: Degree tags (compact pill row)
+        if job.degree_tags:
+            tags = "  •  ".join(job.degree_tags)
+            elements.append(Paragraph(
+                f"<b>🎓 Degrees:</b>  {self._escape(tags)}",
+                self.styles["JobField"]
+            ))
+
+        # Row 5: Exam required
         if job.exam_required:
-            highlight_rows.append(
-                f"<b>📝 Exam:</b>  {self._escape(job.exam_required)}"
-            )
+            elements.append(Paragraph(
+                f"<b>📝 Exam:</b>  {self._escape(job.exam_required)}",
+                self.styles["JobField"]
+            ))
 
-        # Last Date with urgency
+        # Row 6: Last Date with urgency colour
         if job.last_date:
             days_left = (job.last_date - date.today()).days
-            urgency = ""
             if days_left < 0:
-                urgency = ' <font color="#EF4444">(Expired)</font>'
+                urgency = f'<font color="#EF4444"><b>  ⚠️ EXPIRED</b></font>'
             elif days_left == 0:
-                urgency = ' <font color="#EF4444">(Last Day!)</font>'
+                urgency = f'<font color="#EF4444"><b>  🚨 LAST DAY!</b></font>'
             elif days_left <= 3:
-                urgency = f' <font color="#F59E0B">({days_left} days left!)</font>'
+                urgency = f'<font color="#F59E0B"><b>  ⏰ {days_left} days left!</b></font>'
             elif days_left <= 7:
-                urgency = f' <font color="#3B82F6">({days_left} days left)</font>'
-            highlight_rows.append(
-                f"<b>📅 Last Date:</b>  {job.last_date.strftime('%d %b %Y')}{urgency}"
-            )
+                urgency = f'<font color="#3B82F6">  ({days_left} days left)</font>'
+            else:
+                urgency = f'<font color="#10B981">  ({days_left} days left)</font>'
+            elements.append(Paragraph(
+                f"<b>📅 Last Date:</b>  <b>{job.last_date.strftime('%d %B %Y')}</b>{urgency}",
+                self.styles["JobHighlight"]
+            ))
 
-        # Apply link
-        if job.apply_link:
-            link_text = job.apply_link if len(job.apply_link) <= 55 else job.apply_link[:52] + "..."
-            highlight_rows.append(
-                f'<b>🔗 Apply:</b>  <a href="{job.apply_link}" color="#3B82F6">{self._escape(link_text)}</a>'
-            )
+        # ── Apply / Read Full Details Link (PROMINENT) ──
+        link_url = job.apply_link or job.notification_link
+        if link_url:
+            # Truncate long URLs for display but keep full URL in href
+            display_url = link_url if len(link_url) <= 60 else link_url[:57] + "..."
+            elements.append(Spacer(1, 2 * mm))
+            elements.append(Paragraph(
+                f'🔗  <b>Apply / Read Full Details:</b>  '
+                f'<a href="{link_url}" color="#3B82F6"><u>{self._escape(display_url)}</u></a>',
+                self.styles["JobHighlight"]
+            ))
 
-        # Degree tags
-        if job.degree_tags:
-            tags = ", ".join(job.degree_tags)
-            highlight_rows.append(
-                f"<b>🎓 Degrees:</b>  {self._escape(tags)}"
-            )
-
-        # Render all highlights
-        for row in highlight_rows:
-            elements.append(Paragraph(row, self.styles["JobField"]))
-
-        # Source tag
+        # ── Source tag ──
+        elements.append(Spacer(1, 1 * mm))
         elements.append(Paragraph(
             f"Source: {self._escape(job.source)}",
             self.styles["SourceTag"]
         ))
 
-        # Card separator
+        # Card bottom separator
         elements.append(Spacer(1, 2 * mm))
         if index < total:
             elements.append(HRFlowable(
-                width="100%", thickness=0.3, color=BORDER,
-                spaceBefore=1 * mm, spaceAfter=3 * mm
+                width="100%", thickness=0.5, color=DIVIDER,
+                spaceBefore=1 * mm, spaceAfter=2 * mm
             ))
 
         return elements
+
 
     @staticmethod
     def _escape(text: str) -> str:

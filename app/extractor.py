@@ -17,27 +17,34 @@ from app.models import Job
 
 logger = logging.getLogger(__name__)
 
-EXTRACTION_PROMPT = """You are a specialized government job posting extractor. Extract ALL government job postings from the text below.
+EXTRACTION_PROMPT = """You are a specialized government job posting extractor. Extract ALL government job postings from the text below with COMPLETE details.
 
 For EACH job posting found, extract these fields as JSON:
-- title: Exact job title/post name
-- organization: Recruiting department/organization name
-- eligibility: Required qualifications, degrees, percentages, age limits (single string)
+- title: Exact job title/post name (e.g., "Junior Engineer", "Clerk", "Assistant Professor")
+- organization: Full recruiting department/organization name (e.g., "Railway Recruitment Board (RRB)", "State Bank of India (SBI)")
+- description: 2-3 sentence summary of what the job is about, key highlights, and what the candidate will do
+- eligibility: FULL eligibility text — qualifications, degrees, percentages, age limits, experience required (complete string, be thorough)
+- age_limit: Age limit extracted separately (e.g., "18-32 years", "Max 35 years", "21-27 years (relaxation applicable)")
 - degree_tags: Array of degrees mentioned (e.g., ["B.Tech", "B.E.", "BSc", "BCA", "Law", "MBA", "Any Graduate"])
-- salary: Pay scale or salary if mentioned (string like "₹35,000–₹45,000/month" or "Level-7 CPC")
-- vacancies: Number of posts if mentioned (string like "45" or "Not specified")
-- exam_required: Any exam mentioned like GATE, UPSC, SSC, Banking, Railway, etc. (string or null)
+- salary: EXACT pay scale or salary (e.g., "₹35,400–₹1,12,400/month (Level-6 CPC)", "₹20,000–₹60,000/month", "₹50,000/month + allowances")
+- vacancies: EXACT number of posts (e.g., "4000 posts", "150 vacancies", "Not specified")
+- selection_process: How candidates are selected (e.g., "Written Exam + Interview", "CBT + Physical Test", "UPSC Interview")
+- exam_required: Specific exam name if any (e.g., "GATE 2026", "UPSC CSE", "SSC CGL", "IBPS CWE", or null)
 - last_date: Application deadline in YYYY-MM-DD format. Infer year as 2026 if not given. Use null if not found.
-- apply_link: Direct application URL if present, otherwise null
+- apply_link: Direct online application URL if present (e.g., "https://..."), otherwise null
+- notification_link: URL to the full job notification/article on the source website if present, otherwise null
 
 CRITICAL RULES:
 1. ONLY extract GOVERNMENT jobs (PSU, Central Govt, State Govt, Railways, Banking, Defence, SSC, UPSC, Teaching, Public Sector)
-2. IGNORE private companies, ads, navigation text
+2. IGNORE private companies, ads, navigation text, login prompts
 3. Convert "15 Aug 2026" → "2026-08-15"
 4. If eligibility says "B.Tech/B.E." include both in degree_tags
-5. "Any Graduate" or "Any Branch" matches everything
-6. Return ONLY a valid JSON array. NO markdown, NO explanations, NO code blocks.
-7. If no jobs found, return: []
+5. "Any Graduate" or "Any Branch" matches everything — add "Any Graduate" to degree_tags
+6. For salary: include the pay band/level if mentioned (e.g., "Level-4", "Pay Band-2")
+7. For vacancies: include category breakdown if mentioned (e.g., "500 posts (UR-250, OBC-135, SC-75, ST-40)")
+8. notification_link and apply_link: extract any URLs that appear near the job listing — these are critical
+9. Return ONLY a valid JSON array. NO markdown, NO explanations, NO code blocks.
+10. If no jobs found, return: []
 
 Source: {source}
 
@@ -89,6 +96,14 @@ class JobExtractor:
                     wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
                     logger.warning(f"[{source}] Gemini rate limit (attempt {attempt}), waiting {wait_time}s...")
                     time.sleep(wait_time)
+                elif any(k in error_str for k in ["not found", "404", "model", "invalid", "does not exist"]):
+                    # Invalid model name — fail fast instead of retrying 3 times
+                    logger.critical(
+                        f"[{source}] ❌ CRITICAL: Gemini model '{self.model._model_name}' is INVALID or not found. "
+                        f"Check GEMINI_MODEL env var. Valid models: gemini-1.5-flash, gemini-2.0-flash-lite. "
+                        f"Error: {e}"
+                    )
+                    return []  # No point retrying with an invalid model
                 else:
                     logger.error(f"[{source}] Gemini extraction failed (attempt {attempt}): {e}")
                     if attempt < self.max_retries:
@@ -202,17 +217,25 @@ JSON output:"""
             if isinstance(degree_tags, str):
                 degree_tags = [t.strip() for t in degree_tags.split(",") if t.strip()]
 
+            # apply_link fallback: use notification_link if apply_link not found
+            apply_link = item.get("apply_link") or item.get("notification_link")
+            notification_link = item.get("notification_link") or item.get("apply_link")
+
             job = Job(
                 source=source,
                 title=item.get("title", "Unknown"),
                 organization=item.get("organization", "Unknown"),
+                description=item.get("description"),
                 eligibility=item.get("eligibility"),
+                age_limit=item.get("age_limit"),
                 degree_tags=degree_tags or None,
                 salary=item.get("salary"),
                 vacancies=item.get("vacancies"),
+                selection_process=item.get("selection_process"),
                 exam_required=item.get("exam_required"),
                 last_date=last_date,
-                apply_link=item.get("apply_link"),
+                apply_link=apply_link,
+                notification_link=notification_link,
                 raw_hash=raw_hash,
                 raw_text=raw_text[:2000]
             )

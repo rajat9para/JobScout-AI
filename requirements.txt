@@ -16,6 +16,7 @@ google-generativeai>=0.7.0
 requests>=2.32.0
 beautifulsoup4>=4.12.0
 lxml>=5.2.0
+cloudscraper>=1.2.71  # Bypass Cloudflare/WAF blocks on government portals
 
 # Configuration
 pydantic>=2.7.0

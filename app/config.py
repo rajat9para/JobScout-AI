@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ── Gemini (Google AI) ──
     gemini_api_key: str
-    gemini_model: str = "gemini-3.6-flash"  # Updated: gemini-2.0-flash is discontinued
+    gemini_model: str = "gemini-3.6-flash"  # Confirmed working — gemini-3.6-flash or gemini-3.5-flash
 
     # ── App ──
     app_env: str = "production"

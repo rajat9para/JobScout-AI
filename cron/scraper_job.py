@@ -149,6 +149,35 @@ def run_scraper_job():
     logger.info(f"   ⚠️ Extract failures:   {total_extraction_failures}")
     logger.info("=" * 60)
 
+    # ── FAILURE ALERT: if 100% extraction failures with no new jobs, email an alert ──
+    scrapers_count = len(scrapers)
+    if total_new == 0 and total_extraction_failures > 0 and total_skipped_dedup == 0:
+        logger.critical(
+            "❌ CRITICAL: Scraper ran but extracted ZERO jobs with extraction failures. "
+            "Likely cause: invalid GEMINI_MODEL, expired GEMINI_API_KEY, or API quota exceeded. "
+            "Check GEMINI_MODEL env var — valid values: gemini-1.5-flash, gemini-2.0-flash-lite"
+        )
+        try:
+            from app.brevo_mailer import BrevoMailer
+            mailer = BrevoMailer()
+            mailer.send_error_alert(
+                subject="⚠️ JobScout-AI — Scraper Extracted 0 Jobs",
+                body=(
+                    f"<h2>⚠️ Scraper Alert</h2>"
+                    f"<p>The scraper ran but extracted <b>0 jobs</b> with <b>{total_extraction_failures} extraction failures</b>.</p>"
+                    f"<p><b>Most likely cause:</b> Invalid Gemini model name or expired API key.</p>"
+                    f"<ul>"
+                    f"<li>Check <code>GEMINI_MODEL</code> env var — must be <code>gemini-1.5-flash</code></li>"
+                    f"<li>Check <code>GEMINI_API_KEY</code> is valid and not expired</li>"
+                    f"<li>Visit <code>/api/debug</code> for full pipeline diagnostics</li>"
+                    f"</ul>"
+                    f"<p style='color:#666;font-size:11px;'>— JobScout-AI Auto-Alert</p>"
+                )
+            )
+        except Exception as alert_err:
+            logger.error(f"Failed to send failure alert email: {alert_err}")
+
 
 if __name__ == "__main__":
     run_scraper_job()
+

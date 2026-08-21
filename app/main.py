@@ -454,3 +454,102 @@ async def scheduler_status():
     except Exception as e:
         return {"running": False, "error": str(e)}
 
+
+@app.get("/api/debug")
+async def debug_pipeline():
+    """Full pipeline diagnostic — checks every component end-to-end.
+
+    Tests:
+    1. Gemini API key + model validity
+    2. Supabase connection + table counts
+    3. Scheduler status
+    4. Last 15 days job count
+    5. Today's digest queue count
+
+    Use this to instantly identify which stage is broken.
+    """
+    result = {
+        "timestamp": datetime.now().isoformat(),
+        "gemini": {"ok": False, "model": None, "error": None},
+        "supabase": {"ok": False, "jobs_total": 0, "jobs_15d": 0, "digest_pending": 0, "error": None},
+        "scheduler": {"running": False, "jobs": []},
+        "profile": {"found": False, "email": None, "status": None},
+        "verdict": "❌ Pipeline broken — see individual checks above",
+    }
+
+    settings = get_settings()
+
+    # ── 1. Gemini check ──
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.gemini_api_key)
+        model = genai.GenerativeModel(settings.gemini_model)
+        test_resp = model.generate_content(
+            "Reply with exactly: OK",
+            generation_config=genai.GenerationConfig(max_output_tokens=5, temperature=0)
+        )
+        result["gemini"]["ok"] = True
+        result["gemini"]["model"] = settings.gemini_model
+        result["gemini"]["response"] = test_resp.text.strip()
+    except Exception as e:
+        result["gemini"]["error"] = str(e)
+        result["gemini"]["model"] = settings.gemini_model
+
+    # ── 2. Supabase + job counts ──
+    try:
+        total = db.get_total_jobs_count()
+        recent = db.get_jobs_last_n_days(days=15)
+        pending = db.get_digest_count()
+        result["supabase"]["ok"] = True
+        result["supabase"]["jobs_total"] = total
+        result["supabase"]["jobs_15d"] = len(recent)
+        result["supabase"]["digest_pending"] = pending
+    except Exception as e:
+        result["supabase"]["error"] = str(e)
+
+    # ── 3. Scheduler check ──
+    try:
+        from app.scheduler import scheduler
+        result["scheduler"]["running"] = scheduler.running
+        if scheduler.running:
+            result["scheduler"]["jobs"] = [
+                {"id": j.id, "name": j.name, "next_run": str(j.next_run_time)}
+                for j in scheduler.get_jobs()
+            ]
+    except Exception as e:
+        result["scheduler"]["error"] = str(e)
+
+    # ── 4. Profile check ──
+    try:
+        profile = db.get_profile_by_email(settings.user_email)
+        if not profile:
+            profile = db.get_first_active_profile()
+        if profile:
+            result["profile"]["found"] = True
+            result["profile"]["email"] = profile.email
+            result["profile"]["status"] = profile.status
+            result["profile"]["qualification"] = profile.qualification
+            result["profile"]["interests"] = profile.interests
+    except Exception as e:
+        result["profile"]["error"] = str(e)
+
+    # ── Overall verdict ──
+    all_ok = (
+        result["gemini"]["ok"]
+        and result["supabase"]["ok"]
+        and result["profile"]["found"]
+    )
+    if all_ok and result["supabase"]["jobs_total"] > 0:
+        result["verdict"] = f"✅ Pipeline healthy — {result['supabase']['jobs_total']} total jobs, {result['supabase']['jobs_15d']} in last 15 days"
+    elif all_ok and result["supabase"]["jobs_total"] == 0:
+        result["verdict"] = "⚠️ Pipeline OK but no jobs in DB yet — trigger a scrape first"
+    elif not result["gemini"]["ok"]:
+        result["verdict"] = f"❌ Gemini API broken — fix GEMINI_MODEL or GEMINI_API_KEY. Error: {result['gemini']['error']}"
+    elif not result["supabase"]["ok"]:
+        result["verdict"] = f"❌ Supabase broken — check SUPABASE_URL / SUPABASE_SERVICE_KEY"
+    elif not result["profile"]["found"]:
+        result["verdict"] = "❌ No profile found — visit dashboard and save your profile first"
+
+    return JSONResponse(content=result)
+
+

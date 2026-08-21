@@ -426,3 +426,35 @@ class BrevoMailer:
 
         logger.error(f"📧 [{label}] All {self.max_retries} email send attempts failed. Last error: {self.last_error}")
         return False
+
+    # ══════════════════════════════════════════════════════════
+    #  ERROR ALERT EMAIL
+    # ══════════════════════════════════════════════════════════
+
+    def send_error_alert(self, subject: str, body: str) -> bool:
+        """Send a plain error/alert email. Used by scraper_job for failure notifications."""
+        settings = get_settings()
+        to_email = settings.user_email
+        if not self._validate_email(to_email):
+            logger.error(f"Invalid alert email: {to_email}")
+            return False
+
+        html = f"""<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;background:#0B1120;color:#F1F5F9;padding:24px;">
+<div style="max-width:560px;margin:0 auto;background:#111827;border-radius:12px;padding:24px;border:1px solid #1F2937;">
+    <h2 style="color:#F59E0B;margin-top:0;">⚠️ JobScout-AI Alert</h2>
+    {body}
+    <hr style="border:0;border-top:1px solid #1F2937;margin:20px 0;">
+    <p style="font-size:11px;color:#64748B;margin:0;">
+        Visit <a href="/api/debug" style="color:#3B82F6;">/api/debug</a> for full pipeline diagnostics.
+    </p>
+</div>
+</body></html>"""
+
+        email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": to_email}],
+            sender={"name": self.sender_name, "email": self.sender_email},
+            subject=subject,
+            html_content=html,
+        )
+        return self._send_with_retry(email, "error-alert")

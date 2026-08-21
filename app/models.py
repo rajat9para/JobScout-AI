@@ -45,13 +45,17 @@ class Job(BaseModel):
     source: str
     title: str
     organization: str
+    description: Optional[str] = None       # NEW: 2-3 sentence job summary
     eligibility: Optional[str] = None
+    age_limit: Optional[str] = None         # NEW: age limit extracted separately
     degree_tags: Optional[List[str]] = None
     salary: Optional[str] = None
     vacancies: Optional[str] = None
+    selection_process: Optional[str] = None  # NEW: how candidates are selected
     exam_required: Optional[str] = None
     last_date: Optional[date] = None
     apply_link: Optional[str] = None
+    notification_link: Optional[str] = None  # NEW: URL to full article/notification
     raw_hash: str
     raw_text: Optional[str] = None
     scraped_at: Optional[datetime] = None

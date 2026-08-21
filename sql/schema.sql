@@ -25,13 +25,17 @@ CREATE TABLE IF NOT EXISTS jobs (
     source TEXT NOT NULL,
     title TEXT NOT NULL,
     organization TEXT NOT NULL,
+    description TEXT,                  -- NEW v2.3: 2-3 sentence job summary
     eligibility TEXT,
+    age_limit TEXT,                    -- NEW v2.3: age limit extracted separately
     degree_tags TEXT[],
     salary TEXT,
     vacancies TEXT,
+    selection_process TEXT,            -- NEW v2.3: how candidates are selected
     exam_required TEXT,
     last_date DATE,
     apply_link TEXT,
+    notification_link TEXT,            -- NEW v2.3: URL to full article/notification
     raw_hash TEXT UNIQUE NOT NULL,
     raw_text TEXT,
     scraped_at TIMESTAMPTZ DEFAULT NOW()
@@ -130,3 +134,10 @@ CREATE TRIGGER update_profiles_updated_at
 -- ALTER TABLE profiles DROP COLUMN IF EXISTS onboarding_state;
 --
 -- CREATE TABLE IF NOT EXISTS daily_digest ( ... );  -- use full definition above
+
+-- ── Migration v2.3: Add rich detail columns to jobs ──
+-- RUN THESE in Supabase SQL Editor if you have an existing database:
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS age_limit TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS selection_process TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS notification_link TEXT;

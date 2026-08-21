@@ -20,6 +20,18 @@ from typing import List, Optional
 import requests
 from bs4 import BeautifulSoup
 
+# cloudscraper bypasses Cloudflare/WAF blocks on government portals
+# Falls back gracefully if not installed
+try:
+    import cloudscraper
+    _cloudscraper = cloudscraper.create_scraper(
+        browser={"browser": "chrome", "platform": "windows", "mobile": False}
+    )
+    CLOUDSCRAPER_AVAILABLE = True
+except ImportError:
+    _cloudscraper = None
+    CLOUDSCRAPER_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # Multiple User-Agents for retry on block
@@ -77,12 +89,41 @@ class BaseScraper(ABC):
         pass
 
     def _fetch(self, url: str) -> Optional[str]:
-        """Fetch URL with automatic retry using different User-Agents."""
+        """Fetch URL with automatic retry using different User-Agents.
+        
+        Falls back to cloudscraper if requests gets blocked (403/Cloudflare).
+        """
         for attempt, ua in enumerate(USER_AGENTS):
             try:
                 logger.info(f"[{self.source_name}] Fetching: {url} (attempt {attempt + 1})")
                 self.session.headers["User-Agent"] = ua
                 response = self.session.get(url, timeout=REQUEST_TIMEOUT)
+
+                # Detect Cloudflare/WAF block pages before raising
+                is_blocked = (
+                    response.status_code in (403, 503)
+                    or "cloudflare" in response.text.lower()[:500]
+                    or "access denied" in response.text.lower()[:500]
+                    or "captcha" in response.text.lower()[:500]
+                )
+
+                if is_blocked and CLOUDSCRAPER_AVAILABLE:
+                    logger.warning(
+                        f"[{self.source_name}] Blocked by WAF (status {response.status_code}), "
+                        f"retrying with cloudscraper..."
+                    )
+                    try:
+                        cs_response = _cloudscraper.get(url, timeout=REQUEST_TIMEOUT)
+                        if len(cs_response.text) >= 500:
+                            logger.info(
+                                f"[{self.source_name}] ✅ cloudscraper success: "
+                                f"{len(cs_response.text)} chars from {url}"
+                            )
+                            time.sleep(DELAY_BETWEEN_REQUESTS)
+                            return cs_response.text
+                    except Exception as cs_err:
+                        logger.warning(f"[{self.source_name}] cloudscraper also failed: {cs_err}")
+
                 response.raise_for_status()
 
                 # Check if we got meaningful content (not just a block page)
@@ -101,6 +142,7 @@ class BaseScraper(ABC):
 
         logger.error(f"[{self.source_name}] All fetch attempts failed for {url}")
         return None
+
 
     def _clean_html(self, html: str) -> str:
         soup = BeautifulSoup(html, "html.parser")
