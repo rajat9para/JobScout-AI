@@ -305,7 +305,12 @@ class PDFGenerator:
         return buffer.read()
 
     def _group_by_date(self, jobs: List[Job]) -> Dict[str, List[Job]]:
-        """Group jobs by scraped date, sorted most recent first."""
+        """Group jobs by scraped date, sorted most recent first.
+        
+        Within each date group, jobs are ranked by salary/prestige — higher
+        salary and higher-prestige posts (Scientist, Director, Professor, etc.)
+        appear before lower ones (Assistant, Clerk, etc.).
+        """
         grouped = defaultdict(list)
         for job in jobs:
             if job.scraped_at:
@@ -330,7 +335,74 @@ class PDFGenerator:
                 return datetime.min
 
         sorted_keys = sorted(grouped.keys(), key=_parse_date_key, reverse=True)
-        return {k: grouped[k] for k in sorted_keys}
+
+        # Within each date group, sort by salary/prestige rank (highest first)
+        result = {}
+        for k in sorted_keys:
+            result[k] = sorted(grouped[k], key=self._estimate_job_rank, reverse=True)
+
+        return result
+
+    @staticmethod
+    def _estimate_job_rank(job: Job) -> int:
+        """Estimate a numeric rank for a job based on salary and post prestige.
+
+        Higher rank = more prestigious / higher salary → appears first in PDF.
+
+        Ranking strategy:
+        1. Parse salary string for numeric values (₹ amounts)
+        2. Boost score for high-prestige keywords in title/organization
+        3. Penalize for lower-level keywords
+        """
+        score = 0
+
+        # ── 1. Parse salary for numeric value ──
+        if job.salary:
+            import re
+            # Extract all numbers from salary string (handles ₹35,400 or 35400 or 1,12,400)
+            # Remove ₹ and commas, find all numeric sequences
+            salary_clean = job.salary.replace("₹", "").replace(",", "").replace(" ", "")
+            numbers = re.findall(r'\d+', salary_clean)
+            if numbers:
+                # Use the highest number as the salary indicator
+                max_sal = max(int(n) for n in numbers if len(n) >= 4)  # At least 4 digits to be salary
+                score += max_sal // 100  # Normalize (e.g., 112400 → 1124)
+
+        # ── 2. High-prestige title keywords (boost) ──
+        title_lower = (job.title or "").lower()
+        org_lower = (job.organization or "").lower()
+        combined = f"{title_lower} {org_lower}"
+
+        # Tier 1: Very high prestige (+500)
+        tier1 = ["scientist", "director", "commissioner", "secretary", "chairman",
+                 "professor", "joint secretary", "additional secretary", "ias", "ips",
+                 "upsc", "judge", "magistrate", "general manager", "chief"]
+        for kw in tier1:
+            if kw in combined:
+                score += 500
+                break
+
+        # Tier 2: High prestige (+300)
+        tier2 = ["officer", "manager", "engineer", "doctor", "medical officer",
+                 "senior", "specialist", "analyst", "controller", "superintendent",
+                 "inspector", "deputy", "assistant professor", "lecturer"]
+        for kw in tier2:
+            if kw in combined:
+                score += 300
+                break
+
+        # Tier 3: Mid-level (+100)
+        tier3 = ["technician", "sub-inspector", "junior engineer", "accountant",
+                 "programmer", "foreman", "nurse", "pharmacist", "teacher"]
+        for kw in tier3:
+            if kw in combined:
+                score += 100
+                break
+
+        # Tier 4: Entry-level (+0, no penalty — just lower rank)
+        # clerk, assistant, steno, peon, MTS, etc. get base score only
+
+        return score
 
     def _build_job_card(self, job: Job, index: int, total: int) -> list:
         """Build a detailed, information-rich job card."""

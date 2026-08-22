@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # ── Gemini (Google AI) ──
     gemini_api_key: str
-    gemini_model: str = "gemini-3.6-flash"  # Confirmed working — gemini-3.6-flash or gemini-3.5-flash
+    gemini_model: str = "gemini-3.6-flash"  # Confirmed working — uses google-genai SDK
 
     # ── App ──
     app_env: str = "production"

@@ -155,7 +155,7 @@ def run_scraper_job():
         logger.critical(
             "❌ CRITICAL: Scraper ran but extracted ZERO jobs with extraction failures. "
             "Likely cause: invalid GEMINI_MODEL, expired GEMINI_API_KEY, or API quota exceeded. "
-            "Check GEMINI_MODEL env var — valid values: gemini-1.5-flash, gemini-2.0-flash-lite"
+            "Check GEMINI_MODEL env var — recommended: gemini-3.6-flash"
         )
         try:
             from app.brevo_mailer import BrevoMailer
@@ -167,7 +167,7 @@ def run_scraper_job():
                     f"<p>The scraper ran but extracted <b>0 jobs</b> with <b>{total_extraction_failures} extraction failures</b>.</p>"
                     f"<p><b>Most likely cause:</b> Invalid Gemini model name or expired API key.</p>"
                     f"<ul>"
-                    f"<li>Check <code>GEMINI_MODEL</code> env var — must be <code>gemini-1.5-flash</code></li>"
+                    f"<li>Check <code>GEMINI_MODEL</code> env var — must be <code>gemini-3.6-flash</code></li>"
                     f"<li>Check <code>GEMINI_API_KEY</code> is valid and not expired</li>"
                     f"<li>Visit <code>/api/debug</code> for full pipeline diagnostics</li>"
                     f"</ul>"

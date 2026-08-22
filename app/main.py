@@ -481,12 +481,13 @@ async def debug_pipeline():
 
     # ── 1. Gemini check ──
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=settings.gemini_api_key)
-        model = genai.GenerativeModel(settings.gemini_model)
-        test_resp = model.generate_content(
-            "Reply with exactly: OK",
-            generation_config=genai.GenerationConfig(max_output_tokens=5, temperature=0)
+        from google import genai as genai_client
+        from google.genai import types as genai_types
+        client = genai_client.Client(api_key=settings.gemini_api_key)
+        test_resp = client.models.generate_content(
+            model=settings.gemini_model,
+            contents="Reply with exactly: OK",
+            config=genai_types.GenerateContentConfig(max_output_tokens=5, temperature=0)
         )
         result["gemini"]["ok"] = True
         result["gemini"]["model"] = settings.gemini_model

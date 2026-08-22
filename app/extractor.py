@@ -1,6 +1,6 @@
 """Gemini API integration for structured job extraction.
 
-Uses Google Gemini 1.5 Flash (free tier: 15 RPM, 1M tokens/day).
+Uses Google Gemini 3.6 Flash via the unified google-genai SDK.
 Handles rate limiting with automatic retry and backoff.
 """
 import hashlib
@@ -8,10 +8,11 @@ import json
 import logging
 import re
 import time
-import warnings
 from typing import List
-warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
-import google.generativeai as genai
+
+from google import genai
+from google.genai import types
+
 from app.config import get_settings
 from app.models import Job
 
@@ -61,8 +62,8 @@ class JobExtractor:
 
     def __init__(self):
         settings = get_settings()
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel(settings.gemini_model)
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.model_name = settings.gemini_model
         self.max_retries = settings.max_retries
         self.retry_delay = settings.retry_delay_seconds
 
@@ -77,9 +78,10 @@ class JobExtractor:
 
         for attempt in range(1, self.max_retries + 1):
             try:
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config=genai.GenerationConfig(
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
                         temperature=0.1,
                         max_output_tokens=8192,
                     )
@@ -99,8 +101,8 @@ class JobExtractor:
                 elif any(k in error_str for k in ["not found", "404", "model", "invalid", "does not exist"]):
                     # Invalid model name — fail fast instead of retrying 3 times
                     logger.critical(
-                        f"[{source}] ❌ CRITICAL: Gemini model '{self.model._model_name}' is INVALID or not found. "
-                        f"Check GEMINI_MODEL env var. Valid models: gemini-1.5-flash, gemini-2.0-flash-lite. "
+                        f"[{source}] ❌ CRITICAL: Gemini model '{self.model_name}' is INVALID or not found. "
+                        f"Check GEMINI_MODEL env var. Recommended: gemini-3.6-flash. "
                         f"Error: {e}"
                     )
                     return []  # No point retrying with an invalid model
@@ -133,9 +135,13 @@ Resume text:
 JSON output:"""
 
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(temperature=0.1, max_output_tokens=1000)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    max_output_tokens=1000,
+                )
             )
             content = response.text.strip()
             # Extract JSON
