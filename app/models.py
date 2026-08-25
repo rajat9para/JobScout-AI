@@ -50,12 +50,14 @@ class Job(BaseModel):
     age_limit: Optional[str] = None         # NEW: age limit extracted separately
     degree_tags: Optional[List[str]] = None
     salary: Optional[str] = None
+    application_fee: Optional[str] = None   # Application fee (e.g. ₹500 for Gen/OBC, Nil for SC/ST)
     vacancies: Optional[str] = None
-    selection_process: Optional[str] = None  # NEW: how candidates are selected
+    selection_process: Optional[str] = None  # how candidates are selected
     exam_required: Optional[str] = None
     last_date: Optional[date] = None
     apply_link: Optional[str] = None
-    notification_link: Optional[str] = None  # NEW: URL to full article/notification
+    notification_link: Optional[str] = None  # URL to full article/notification
+    match_score: Optional[int] = None        # Computed profile match score (0-100%)
     raw_hash: str
     raw_text: Optional[str] = None
     scraped_at: Optional[datetime] = None

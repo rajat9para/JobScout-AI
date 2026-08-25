@@ -1,10 +1,10 @@
 ================================================================================
-                    JOBSCOUT V2.1 — YOUR COMPLETE SETUP CHECKLIST
-                         (Email Digest Edition — Brevo + PDF)
+                    JOBSCOUT V2.2 — YOUR COMPLETE SETUP CHECKLIST
+                       (Groq LPU AI Edition — Brevo + PDF)
 ================================================================================
 
 Follow these steps IN ORDER. Do not skip any step. Each step depends on the
-previous one. Estimated total time: 30-40 minutes.
+previous one. Estimated total time: 15-20 minutes.
 
 ================================================================================
 STEP 1: CREATE ACCOUNTS (Free Tier Only)
@@ -12,332 +12,88 @@ STEP 1: CREATE ACCOUNTS (Free Tier Only)
 
 [ ] 1.1 Supabase Account
       → Go to https://supabase.com
-      → Sign up with GitHub (fastest) or email
+      → Sign up with GitHub or email
       → Create a NEW project named "jobscout-v2"
-      → Choose region closest to you (Mumbai/Singapore for India)
-      → Wait for database to provision (2-3 minutes)
+      → Choose Mumbai/Singapore region for lowest latency
 
 [ ] 1.2 Brevo (Sendinblue) Account
       → Go to https://www.brevo.com
-      → Sign up with your email (free plan)
-      → Verify your email address
-      → Free tier: 300 emails/day, 9000 emails/month
-      → Go to Settings → SMTP & API → API Keys
-      → Click "Generate a new API key"
-      → Copy the key (starts with xkeysib-...)
+      → Sign up with your email (Free plan gives 300 emails/day, 9000/month)
+      → Go to Settings → Senders & IPs → Add and verify your sender email
+      → Go to Settings → SMTP & API → API Keys → Generate new API key (xkeysib-...)
 
-[ ] 1.3 Google AI Studio (Gemini API)
-      → Go to https://aistudio.google.com/app/apikey
-      → Sign in with your Google account
-      → Click "Create API Key"
-      → Copy the key immediately (starts with AIzaSy...)
-      → NOTE: Free tier = 15 requests/min, 1M tokens/day
+[ ] 1.3 Groq Cloud Account (Groq LPU AI)
+      → Go to https://console.groq.com
+      → Sign in with your Google or GitHub account
+      → Go to API Keys → Create API Key (starts with gsk_...)
+      → Copy your Groq key (High-speed LPU inference with openai/gpt-oss-120b)
 
 [ ] 1.4 Render Account
       → Go to https://render.com
       → Sign up with GitHub
-      → Verify your email
-
-[ ] 1.5 UptimeRobot Account
-      → Go to https://uptimerobot.com
-      → Sign up with email (free tier)
-      → Verify your email
 
 ================================================================================
-STEP 2: GET YOUR CREDENTIALS
+STEP 2: GET YOUR CREDENTIALS & CONFIGURE .ENV
 ================================================================================
 
-[ ] 2.1 Supabase Credentials
-      → In Supabase Dashboard, go to Project Settings → API
-      → Copy these THREE values:
-        • Project URL  →  SUPABASE_URL
-        • anon public  →  SUPABASE_KEY
-        • service_role secret  →  SUPABASE_SERVICE_KEY (KEEP SECRET!)
+[ ] 2.1 Supabase Credentials (Project Settings → API):
+      • SUPABASE_URL=https://your-project.supabase.co
+      • SUPABASE_SERVICE_KEY=your-service-role-secret-key
 
-[ ] 2.2 Brevo Credentials
-      → In Brevo Dashboard → Settings → SMTP & API → API Keys
-      → Copy your API key → BREVO_API_KEY
-      → Add & verify a sender email in Brevo → SENDER_EMAIL
-        (Go to: Settings → Senders, Domains & Dedicated IPs → Add a sender)
-      → Decide your sender name → SENDER_NAME (e.g., "JobScout Bot")
+[ ] 2.2 Brevo Credentials:
+      • BREVO_API_KEY=xkeysib-...
+      • SENDER_EMAIL=your_verified_sender@gmail.com
+      • SENDER_NAME=JobScout-AI
 
-[ ] 2.3 Your Email Address
-      → The email where you want to receive the nightly PDF digest
-      → This goes into USER_EMAIL
+[ ] 2.3 Groq AI Credentials:
+      • GROQ_API_KEY=gsk_...
+      • GROQ_MODEL=openai/gpt-oss-120b
+
+[ ] 2.4 Your Alert Email:
+      • USER_EMAIL=your_email@gmail.com
 
 ================================================================================
-STEP 3: SETUP SUPABASE DATABASE
+STEP 3: RUN LOCAL VERIFICATION & TEST SUITE
 ================================================================================
 
-[ ] 3.1 Run Database Schema
-      → In Supabase, go to SQL Editor → New Query
-      → Open the file: sql/schema.sql (from this project)
-      → COPY the ENTIRE contents
-      → PASTE into the SQL Editor
-      → Click RUN
-      → You should see "Success" message
+[ ] 3.1 Install Dependencies:
+      pip install -r requirements.txt
 
-[ ] 3.2 Create Storage Bucket (optional, for resumes)
-      → In Supabase, go to Storage → New Bucket
-      → Name: resumes
-      → Public: OFF (keep it private)
-      → Click Save
+[ ] 3.2 Run End-to-End Automated Test Suite:
+      python tests/test_full_pipeline.py
+      → Verifies: Groq extraction, resume parser, 4 scrapers, ranked scoring,
+        ReportLab PDF generation, Brevo connection, and Supabase 15-day cleanup.
+      → Ensure all 8/8 tests pass (100% success).
 
-[ ] 3.3 Verify Tables
-      → Go to Table Editor
-      → You should see 5 tables: profiles, jobs, sent_alerts,
-        exam_reminders, daily_digest
+[ ] 3.3 Launch Local Command Center:
+      uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+      → Open http://127.0.0.1:8000 in your browser
+      → Check running train ticker, ranked preferences, and live diagnostics.
 
 ================================================================================
-STEP 4: CONFIGURE ENVIRONMENT
+STEP 4: DEPLOY TO RENDER (Zero Cost)
 ================================================================================
 
-[ ] 4.1 Copy Environment File
-      → In your project folder, run:
-        cp .env.example .env
+[ ] 4.1 Push to GitHub:
+      git add .
+      git commit -m "JobScout v2.2 - Groq LPU AI & Ranked Preferences"
+      git push origin main
 
-[ ] 4.2 Fill .env File
-      → Open .env in any text editor
-      → Fill ALL fields with your actual credentials from Step 2
-      → DO NOT share this file with anyone
-      → Example filled .env:
-
-        SUPABASE_URL=https://abcdefgh123456.supabase.co
-        SUPABASE_KEY=eyJhbGciOiJIUzI1NiIs...
-        SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIs...
-        BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxx
-        SENDER_EMAIL=alerts@yourdomain.com
-        SENDER_NAME=JobScout Bot
-        USER_EMAIL=rajat@gmail.com
-        GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        GEMINI_MODEL=gemini-1.5-flash
-        APP_ENV=production
-        LOG_LEVEL=INFO
-        SCRAPE_INTERVAL_MINUTES=60
+[ ] 4.2 Deploy via Blueprint on Render:
+      → Go to Render Dashboard → New + → Blueprint
+      → Select your JobScout repository
+      → Render reads render.yaml and provisions the Web Service
+      → Add your environment variables (GROQ_API_KEY, SUPABASE_URL, etc.)
+      → Click Apply!
 
 ================================================================================
-STEP 5: PUSH CODE TO GITHUB
+STEP 5: ENJOY AUTONOMOUS JOB ALERTS!
 ================================================================================
 
-[ ] 5.1 Initialize Git
-      → In project root folder, run:
-        git init
-        git add .
-        git commit -m "JobScout v2.1 email digest edition"
+JobScout-AI is now live and working 24/7.
+Morning report arrives at 10:00 AM IST.
+Evening report arrives at 6:00 PM IST.
+Deadline reminders arrive at 8:00 AM IST.
+Database automatically cleans up jobs older than 15 days at 3:00 AM IST.
 
-[ ] 5.2 Create GitHub Repo
-      → Go to https://github.com/new
-      → Name: jobscout-v2
-      → Visibility: Private (recommended)
-      → Click Create
-
-[ ] 5.3 Push Code
-      → Run these commands (replace YOUR_USERNAME):
-        git branch -M main
-        git remote add origin https://github.com/YOUR_USERNAME/jobscout-v2.git
-        git push -u origin main
-
-================================================================================
-STEP 6: DEPLOY ON RENDER
-================================================================================
-
-[ ] 6.1 Create Blueprint Instance
-      → In Render Dashboard, click "Blueprints"
-      → Click "New Blueprint Instance"
-      → Connect your GitHub account
-      → Select the "jobscout-v2" repository
-      → Render will detect render.yaml automatically
-
-[ ] 6.2 Add Environment Variables
-      → Render will show 4 services:
-        • jobscout-v2-web (Web Service)
-        • jobscout-v2-scraper (Cron Job - hourly)
-        • jobscout-v2-nightly-digest (Cron Job - 10 PM IST)
-        • jobscout-v2-reminders (Cron Job - 8 AM IST)
-
-      → FOR EACH SERVICE, click into it:
-        • Go to "Environment" tab
-        • Click "Add Environment Variable"
-        • Add ALL variables from your .env file ONE BY ONE
-        • For sync: false vars, manually enter the value
-
-      → Variables to add for ALL 4 services:
-        SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY,
-        BREVO_API_KEY, SENDER_EMAIL, SENDER_NAME,
-        USER_EMAIL, GEMINI_API_KEY, GEMINI_MODEL,
-        APP_ENV, LOG_LEVEL, SCRAPE_INTERVAL_MINUTES
-
-[ ] 6.3 Deploy
-      → Click "Apply" on the Blueprint
-      → Render builds all 4 services (takes 3-5 minutes)
-      → Wait for all to show "Live" status
-      → Copy your web service URL:
-        https://jobscout-v2-web-xxxx.onrender.com
-
-================================================================================
-STEP 7: SETUP YOUR PROFILE
-================================================================================
-
-[ ] 7.1 Open Profile Setup
-      → Go to: https://jobscout-v2-web-xxxx.onrender.com/setup
-      → Fill in the form:
-        1. Email (your email for receiving digests)
-        2. Qualification (e.g., B.Tech, BSc, Law, MBA)
-        3. Select interest sectors (PSU, Banking, Railways, etc.)
-        4. Select experience level
-        5. Click "Save Profile"
-
-[ ] 7.2 Verify Profile
-      → Go to: https://jobscout-v2-web-xxxx.onrender.com/profile
-      → Should show your complete profile as JSON
-
-================================================================================
-STEP 8: SETUP UPTIMEROBOT (CRITICAL — DO NOT SKIP)
-================================================================================
-
-[ ] 8.1 Create Monitor
-      → In UptimeRobot Dashboard, click "Add New Monitor"
-      • Monitor Type: HTTP(s)
-      • Friendly Name: JobScout Keep Alive
-      • URL: https://jobscout-v2-web-xxxx.onrender.com/health
-      • Monitoring Interval: Every 5 minutes (300 seconds)
-      • Click "Create Monitor"
-
-[ ] 8.2 Why This Matters
-      → Render free web services SPIN DOWN after 15 min idle
-      → Without UptimeRobot, the web service sleeps
-      → UptimeRobot pings /health every 5 min keeping it alive
-      → This is the ONLY way to make free tier reliable
-
-================================================================================
-STEP 9: TEST THE FULL PIPELINE
-================================================================================
-
-[ ] 9.1 Test Web Endpoints
-      → Visit /health     → Should show {"status": "healthy"}
-      → Visit /setup      → Should show profile form
-      → Visit /profile    → Should show your saved profile
-      → Visit /digest-status → Should show pending digest count
-
-[ ] 9.2 Test Scraper Manually
-      → In Render Dashboard, go to jobscout-v2-scraper
-      → Click "Run Job" (manual trigger)
-      → Check logs for scrape progress
-      → If jobs match your profile, they'll queue for tonight's digest
-
-[ ] 9.3 Test Digest Manually
-      → Visit: https://jobscout-v2-web-xxxx.onrender.com/trigger-digest
-      → This sends a PDF digest email immediately
-      → Check your email inbox (and spam folder)
-      → You should receive a PDF with matched jobs
-
-[ ] 9.4 Verify Database
-      → In Supabase Table Editor, check "jobs" table for scraped jobs
-      → Check "daily_digest" for queued jobs
-      → Check "sent_alerts" for processed records
-
-================================================================================
-STEP 10: MONITORING & MAINTENANCE
-================================================================================
-
-[ ] 10.1 Check Logs Regularly
-      → Render Dashboard → each service → Logs tab
-      → Look for errors or warnings
-
-[ ] 10.2 Check Brevo Dashboard
-      → Brevo → Transactional → Email Logs
-      → Verify emails are being delivered
-      → Check daily sending quota (300/day free)
-
-[ ] 10.3 Check Gemini Usage
-      → Google AI Studio → API Keys → Usage
-      → Free tier: 15 requests/min, 1M tokens/day
-      → Hourly scraping stays well within limits
-
-[ ] 10.4 Common Issues
-      → No digest email? Check Brevo API key, sender verification
-      → Emails in spam? Add sender to contacts, check DKIM setup
-      → No jobs in digest? Check profile interests, scraper logs
-      → DB errors? Re-run schema.sql
-      → Gemini errors? Check API key, wait for rate limit reset
-
-================================================================================
-COST BREAKDOWN (Free Tier)
-================================================================================
-
-Service           | Cost    | Notes
-------------------|---------|------------------------------------------
-Render Web        | $0      | Free tier (with UptimeRobot keep-alive)
-Render Cron x3    | $0      | Free tier (3 cron jobs)
-Supabase DB       | $0      | 500MB limit, 1GB storage
-Brevo Email       | $0      | 300 emails/day, 9000/month free
-Gemini API        | $0      | 15 RPM, 1M tokens/day free
-UptimeRobot       | $0      | Free tier (50 monitors)
-------------------|---------|------------------------------------------
-TOTAL             | $0      | Completely free for personal use
-
-================================================================================
-TROUBLESHOOTING QUICK FIXES
-================================================================================
-
-Problem: "No digest email received"
-Fix: Check Brevo API key is valid. Check sender email is verified in Brevo.
-     Check spam/junk folder. Try /trigger-digest endpoint.
-
-Problem: "Brevo says 'sender not verified'"
-Fix: Go to Brevo → Settings → Senders → Add & verify your sender email.
-
-Problem: "Empty PDF every night"
-Fix: Check profile interests match available jobs. Try BULK mode by
-     widening interests. Check scraper logs for extraction issues.
-
-Problem: "Database connection error"
-Fix: Check SUPABASE_SERVICE_KEY (not anon key). Re-run schema.sql.
-
-Problem: "Gemini rate limit exceeded"
-Fix: Wait 1 minute. Reduce scrape frequency to 2 hours in render.yaml.
-
-Problem: "PDF generation error"
-Fix: Check reportlab is installed. Check logs for specific error.
-
-================================================================================
-UPGRADE PATH (When You're Ready)
-================================================================================
-
-1. Brevo Paid Plan ($9/month)
-   → 20,000 emails/month
-   → Custom domain for better deliverability
-   → Advanced analytics
-
-2. Render Starter Plan ($7/month)
-   → Removes spin-down issue (no UptimeRobot needed)
-   → Faster builds, more resources
-   → Better reliability
-
-3. Gemini Pro Model
-   → Change GEMINI_MODEL to "gemini-1.5-pro"
-   → Better extraction accuracy
-   → Still has generous free tier
-
-4. Add More Sources
-   → Edit app/scraper.py
-   → Add new scraper class
-   → Add to get_all_scrapers()
-   → No other changes needed
-
-================================================================================
-CONGRATULATIONS! You're done.
-================================================================================
-
-If you followed every step, your JobScout bot is now live and monitoring
-government job portals 24/7. Every night at 10 PM IST, you'll receive
-a professional PDF digest with all matching jobs — right in your inbox.
-
-For questions or issues, check:
-• Render Logs (first place to look)
-• Brevo Email Logs (delivery status)
-• Supabase Table Editor (data verification)
-• features.md (full feature list)
-• fullartitecture.md (technical deep dive)
-
-Happy job hunting! 🚀
+Happy Job Hunting! 🚀

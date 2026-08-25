@@ -61,16 +61,16 @@ def _run_reminders():
 
 
 def _run_db_cleanup():
-    """Background: delete data older than 30 days to save Supabase storage.
+    """Background: delete data older than 15 days to protect Supabase free storage.
 
     Runs once daily at 3:00 AM IST. Removes:
-    - Jobs older than 30 days (CASCADE handles related tables)
+    - Jobs older than 15 days (CASCADE handles related tables)
     - Old digest_history records
     """
     try:
         from app.database import Database
         db = Database()
-        stats = db.cleanup_old_data(days=30)
+        stats = db.cleanup_old_data(days=15)
 
         total = stats.get("jobs_deleted", 0) + stats.get("digest_history_deleted", 0)
         if total > 0:
@@ -163,7 +163,7 @@ def start_scheduler():
         _run_db_cleanup,
         CronTrigger(hour=3, minute=0, timezone=IST),
         id="db_cleanup",
-        name="DB Cleanup (3 AM IST, >30 days)",
+        name="DB Cleanup (3 AM IST, >15 days)",
         replace_existing=True,
         misfire_grace_time=3600,
     )
@@ -192,7 +192,7 @@ def start_scheduler():
     logger.info("   🌅 Morning Report → 10:00 AM IST")
     logger.info("   🌇 Evening Report →  6:00 PM IST")
     logger.info("   🔔 Reminders      →  8:00 AM IST")
-    logger.info("   🗑️ DB Cleanup     →  3:00 AM IST (>30 days)")
+    logger.info("   🗑️ DB Cleanup     →  3:00 AM IST (>15 days)")
     logger.info("   💓 DB Keep-Alive  →  Every 8 hours")
     logger.info("=" * 50)
 

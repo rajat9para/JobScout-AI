@@ -457,10 +457,10 @@ class Database:
         result = self._retry(_fetch)
         return result if result is not None else []
 
-    # ── Auto-Cleanup (30 days) ──
+    # ── Auto-Cleanup (15 days rolling window) ──
 
-    def cleanup_old_data(self, days: int = 30) -> dict:
-        """Delete data older than N days to prevent Supabase free storage fill-up.
+    def cleanup_old_data(self, days: int = 15) -> dict:
+        """Delete data older than N days (default 15 days) to protect Supabase free storage.
 
         Deletes:
         - Jobs older than N days (CASCADE removes related sent_alerts,

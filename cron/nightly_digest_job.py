@@ -113,6 +113,12 @@ def run_digest(digest_type: str = "scheduled"):
     job_count = len(jobs)
     logger.info(f"📋 Final job count for digest: {job_count} (source: {source})")
 
+    # Compute match scores for all included jobs
+    matcher = JobMatcher()
+    for j in jobs:
+        if not j.match_score:
+            j.match_score = matcher.compute_match_percentage(profile, j)
+
     # ── Step 3: Generate PDF ──
     try:
         pdf_bytes = pdf_gen.generate(jobs, digest_date=today)

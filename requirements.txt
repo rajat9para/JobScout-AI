@@ -9,8 +9,8 @@ python-multipart>=0.0.9
 # Database & Storage
 supabase>=2.5.0
 
-# AI — Google Gemini (Free Tier) — using unified google-genai SDK
-google-genai>=1.0.0
+# AI — Groq LPU Ultra-Fast Inference (Free Tier)
+groq>=0.9.0
 
 # Scraping
 requests>=2.32.0

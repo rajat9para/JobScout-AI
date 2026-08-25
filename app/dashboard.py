@@ -1,19 +1,12 @@
-"""Dashboard HTML — Premium Glassmorphism Web Dashboard.
+"""Dashboard HTML — Ultra-Premium Glassmorphism Web Dashboard with Running Train Ticker & AI Job Intelligence.
 
-Crystal-clear frosted glass aesthetic with:
-- Animated gradient mesh background with floating orbs
-- Glass panels with backdrop-filter blur + glow borders
-- Premium gradient buttons with hover/pulse animations
-- Google Fonts: Outfit (headings) + Inter (body)
-- Neon-glow navigation, chips, and stats
-- Animated stat counters and floating particles
-- Full dark/light theme support
-
-All API integrations preserved:
-- Profile CRUD, pause/resume
-- Resume upload with drag-drop
-- Digest history, test email, trigger scrape/digest
-- Scheduler status, Brevo diagnostics
+Features:
+- Animated Running Train Ticker (gliding smoothly from right to left with live sarkari updates)
+- Interactive Ranked Sector Preferences (drag/re-order 1> Defence, 2> State PSC, 3> Banking...)
+- Groq Agent #1 & Agent #2 AI Job Intelligence & Reality Check subsystem
+- Deep Evidence-based Reality Scores, Interview Intelligence, and Transparent Source Citations
+- Crystal-clear glassmorphism aesthetic with backdrop-filter blur + neon glow borders
+- Animated stat counters, floating particles, detail modals, and fluid transitions
 """
 
 DASHBOARD_HTML = r'''<!DOCTYPE html>
@@ -21,97 +14,85 @@ DASHBOARD_HTML = r'''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JobScout-AI — Command Center</title>
-    <meta name="description" content="JobScout-AI: Personal Government Job Alert Bot with AI-powered matching">
+    <title>JobScout-AI — Government Job Intelligence & Reality Command Center</title>
+    <meta name="description" content="JobScout-AI: Autonomous Sarkari Naukri Intelligence & Workplace Reality Engine powered by Groq LPU AI">
     <link rel="icon" type="image/png" href="/static/weblogo.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         /* ═══════════════════════════════════════════════
-           DESIGN TOKENS
+           DESIGN TOKENS & PALETTE
            ═══════════════════════════════════════════════ */
         :root {
             --font-heading: 'Outfit', 'Inter', sans-serif;
             --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --radius: 16px;
-            --radius-sm: 10px;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius: 18px;
+            --radius-sm: 12px;
             --radius-xs: 8px;
             --radius-full: 9999px;
             --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             --spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        /* ── Dark Theme (Default) ── */
         [data-theme="dark"] {
-            --bg-base: #050510;
-            --bg-mesh-1: #0a0a2e;
-            --bg-mesh-2: #1a0530;
-            --bg-mesh-3: #050520;
+            --bg-base: #060814;
+            --bg-mesh-1: #0b0f29;
+            --bg-mesh-2: #190a36;
+            --bg-mesh-3: #081a2f;
             --bg-surface: rgba(255, 255, 255, 0.03);
-            --bg-surface-hover: rgba(255, 255, 255, 0.06);
-            --bg-glass: rgba(15, 15, 35, 0.6);
-            --bg-glass-strong: rgba(15, 15, 35, 0.8);
+            --bg-surface-hover: rgba(255, 255, 255, 0.07);
+            --bg-glass: rgba(13, 17, 38, 0.7);
+            --bg-glass-strong: rgba(13, 17, 38, 0.9);
 
             --border-glass: rgba(255, 255, 255, 0.08);
-            --border-glass-hover: rgba(255, 255, 255, 0.15);
-            --border-glow: rgba(139, 92, 246, 0.3);
+            --border-glass-hover: rgba(139, 92, 246, 0.35);
+            --border-glow: rgba(139, 92, 246, 0.4);
 
-            --text-main: #f1f5f9;
+            --text-main: #f8fafc;
             --text-secondary: #cbd5e1;
             --text-muted: #64748b;
             --text-dim: #475569;
 
             --primary: #8b5cf6;
             --primary-hover: #a78bfa;
-            --primary-glow: rgba(139, 92, 246, 0.4);
+            --primary-glow: rgba(139, 92, 246, 0.45);
             --primary-soft: rgba(139, 92, 246, 0.12);
 
-            --cyan: #22d3ee;
-            --cyan-glow: rgba(34, 211, 238, 0.3);
-            --cyan-soft: rgba(34, 211, 238, 0.1);
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.35);
+            --cyan-soft: rgba(6, 182, 212, 0.1);
 
-            --green: #34d399;
-            --green-glow: rgba(52, 211, 153, 0.3);
-            --green-soft: rgba(52, 211, 153, 0.1);
-            --green-border: rgba(52, 211, 153, 0.25);
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.35);
+            --green-soft: rgba(16, 185, 129, 0.12);
 
             --red: #f43f5e;
-            --red-glow: rgba(244, 63, 94, 0.3);
-            --red-soft: rgba(244, 63, 94, 0.1);
-            --red-border: rgba(244, 63, 94, 0.25);
+            --red-soft: rgba(244, 63, 94, 0.12);
 
-            --amber: #fbbf24;
-            --amber-soft: rgba(251, 191, 36, 0.1);
-            --amber-border: rgba(251, 191, 36, 0.25);
+            --amber: #f59e0b;
+            --amber-soft: rgba(245, 158, 11, 0.12);
 
-            --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
-            --shadow-btn: 0 4px 15px rgba(139, 92, 246, 0.3);
+            --shadow-glass: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            --shadow-glow: 0 0 50px rgba(139, 92, 246, 0.18);
+            --shadow-btn: 0 4px 20px rgba(139, 92, 246, 0.35);
 
             --input-bg: rgba(255, 255, 255, 0.04);
             --input-border: rgba(255, 255, 255, 0.1);
-            --input-focus: var(--primary);
-            --input-focus-ring: rgba(139, 92, 246, 0.25);
-
-            --particle-color: rgba(139, 92, 246, 0.15);
-            --orb-1: radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.12) 0%, transparent 50%);
-            --orb-2: radial-gradient(circle at 80% 70%, rgba(34, 211, 238, 0.08) 0%, transparent 50%);
-            --orb-3: radial-gradient(circle at 50% 80%, rgba(244, 63, 94, 0.06) 0%, transparent 40%);
         }
 
-        /* ── Light Theme ── */
         [data-theme="light"] {
-            --bg-base: #f0f2f8;
-            --bg-mesh-1: #e8edf5;
-            --bg-mesh-2: #f5f0ff;
-            --bg-mesh-3: #f0f8ff;
-            --bg-surface: rgba(255, 255, 255, 0.6);
-            --bg-surface-hover: rgba(255, 255, 255, 0.8);
-            --bg-glass: rgba(255, 255, 255, 0.65);
-            --bg-glass-strong: rgba(255, 255, 255, 0.85);
+            --bg-base: #f1f5f9;
+            --bg-mesh-1: #e2e8f0;
+            --bg-mesh-2: #ede9fe;
+            --bg-mesh-3: #e0f2fe;
+            --bg-surface: rgba(255, 255, 255, 0.7);
+            --bg-surface-hover: rgba(255, 255, 255, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.75);
+            --bg-glass-strong: rgba(255, 255, 255, 0.95);
 
-            --border-glass: rgba(0, 0, 0, 0.06);
-            --border-glass-hover: rgba(0, 0, 0, 0.12);
-            --border-glow: rgba(124, 58, 237, 0.2);
+            --border-glass: rgba(0, 0, 0, 0.08);
+            --border-glass-hover: rgba(124, 58, 237, 0.3);
+            --border-glow: rgba(124, 58, 237, 0.25);
 
             --text-main: #0f172a;
             --text-secondary: #334155;
@@ -120,1205 +101,1348 @@ DASHBOARD_HTML = r'''<!DOCTYPE html>
 
             --primary: #7c3aed;
             --primary-hover: #6d28d9;
-            --primary-glow: rgba(124, 58, 237, 0.25);
+            --primary-glow: rgba(124, 58, 237, 0.3);
             --primary-soft: rgba(124, 58, 237, 0.08);
 
             --cyan: #0891b2;
-            --cyan-glow: rgba(8, 145, 178, 0.2);
-            --cyan-soft: rgba(8, 145, 178, 0.06);
+            --cyan-glow: rgba(8, 145, 178, 0.25);
+            --cyan-soft: rgba(8, 145, 178, 0.08);
 
             --green: #059669;
-            --green-glow: rgba(5, 150, 105, 0.2);
-            --green-soft: rgba(5, 150, 105, 0.06);
-            --green-border: rgba(5, 150, 105, 0.2);
+            --green-glow: rgba(5, 150, 105, 0.25);
+            --green-soft: rgba(5, 150, 105, 0.08);
 
             --red: #dc2626;
-            --red-glow: rgba(220, 38, 38, 0.2);
-            --red-soft: rgba(220, 38, 38, 0.06);
-            --red-border: rgba(220, 38, 38, 0.2);
+            --red-soft: rgba(220, 38, 38, 0.08);
 
             --amber: #d97706;
-            --amber-soft: rgba(217, 119, 6, 0.06);
-            --amber-border: rgba(217, 119, 6, 0.2);
+            --amber-soft: rgba(217, 119, 6, 0.08);
 
-            --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-            --shadow-glow: 0 0 40px rgba(124, 58, 237, 0.08);
-            --shadow-btn: 0 4px 15px rgba(124, 58, 237, 0.2);
+            --shadow-glass: 0 10px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            --shadow-glow: 0 0 40px rgba(124, 58, 237, 0.1);
+            --shadow-btn: 0 4px 20px rgba(124, 58, 237, 0.25);
 
-            --input-bg: rgba(255, 255, 255, 0.8);
-            --input-border: rgba(0, 0, 0, 0.1);
-            --input-focus: var(--primary);
-            --input-focus-ring: rgba(124, 58, 237, 0.15);
-
-            --particle-color: rgba(124, 58, 237, 0.08);
-            --orb-1: radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.08) 0%, transparent 50%);
-            --orb-2: radial-gradient(circle at 80% 70%, rgba(8, 145, 178, 0.06) 0%, transparent 50%);
-            --orb-3: radial-gradient(circle at 50% 80%, rgba(244, 63, 94, 0.04) 0%, transparent 40%);
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --input-border: rgba(0, 0, 0, 0.12);
         }
 
-        /* ═══════════════════════════════════════════════
-           RESET + BASE
-           ═══════════════════════════════════════════════ */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
 
         body {
             font-family: var(--font-body);
             background: var(--bg-base);
             color: var(--text-main);
             min-height: 100vh;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
             overflow-x: hidden;
-            transition: background 0.5s ease, color 0.3s ease;
+            position: relative;
+            transition: background var(--transition), color var(--transition);
         }
 
-        /* ═══════════════════════════════════════════════
-           ANIMATED BACKGROUND
-           ═══════════════════════════════════════════════ */
-        .bg-mesh {
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background: var(--bg-base);
+        .mesh-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
         }
-        .bg-mesh::before, .bg-mesh::after {
-            content: ''; position: absolute; inset: 0; opacity: 1;
+        .mesh-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.6;
+            animation: orbFloat 25s ease-in-out infinite alternate;
         }
-        .bg-mesh::before {
-            background: var(--orb-1), var(--orb-2), var(--orb-3);
-            animation: meshFloat 20s ease-in-out infinite alternate;
-        }
-        .bg-mesh::after {
-            background: radial-gradient(circle at 60% 40%, var(--particle-color) 0%, transparent 40%);
-            animation: meshFloat2 25s ease-in-out infinite alternate-reverse;
-        }
-        @keyframes meshFloat {
+        .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%); top: -100px; left: -100px; }
+        .orb-2 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(6,182,212,0.2) 0%, transparent 70%); bottom: -150px; right: -150px; animation-delay: -7s; }
+        .orb-3 { width: 450px; height: 450px; background: radial-gradient(circle, rgba(244,63,94,0.15) 0%, transparent 70%); top: 40%; left: 40%; animation-delay: -14s; }
+
+        @keyframes orbFloat {
             0% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(-30px, 20px) scale(1.05); }
-            100% { transform: translate(20px, -15px) scale(0.98); }
-        }
-        @keyframes meshFloat2 {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(30px, -25px) rotate(3deg); }
-        }
-
-        /* Floating Particles */
-        .particles {
-            position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-        }
-        .particle {
-            position: absolute; border-radius: 50%;
-            background: var(--primary);
-            opacity: 0.12;
-            animation: particleFloat linear infinite;
-        }
-        @keyframes particleFloat {
-            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.12; }
-            90% { opacity: 0.12; }
-            100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+            50% { transform: translate(60px, -40px) scale(1.1); }
+            100% { transform: translate(-40px, 60px) scale(0.95); }
         }
 
         /* ═══════════════════════════════════════════════
-           GLASS SYSTEM
+           RUNNING TRAIN TICKER (RIGHT TO LEFT)
+           ═══════════════════════════════════════════════ */
+        .train-ticker-wrap {
+            position: relative;
+            z-index: 10;
+            background: linear-gradient(90deg, rgba(13,17,38,0.95), rgba(25,10,54,0.95), rgba(13,17,38,0.95));
+            border-bottom: 1px solid var(--border-glass);
+            padding: 8px 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .train-badge {
+            background: var(--primary);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            margin: 0 16px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 15px var(--primary-glow);
+            z-index: 2;
+        }
+        .train-track {
+            display: flex;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        .train-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            white-space: nowrap;
+            animation: trainGlide 30s linear infinite;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .train-content:hover { animation-play-state: paused; }
+        .train-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .train-item strong { color: var(--cyan); }
+        .train-item span.hot {
+            background: rgba(244,63,94,0.2);
+            color: var(--red);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        @keyframes trainGlide {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* ═══════════════════════════════════════════════
+           LAYOUT & HEADER
+           ═══════════════════════════════════════════════ */
+        .wrapper {
+            position: relative;
+            z-index: 5;
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .brand-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 0 25px var(--primary-glow);
+        }
+        .brand-title {
+            font-family: var(--font-heading);
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--text-main) 30%, var(--primary-hover) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .brand-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .groq-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-hover);
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(16px);
+            transition: all var(--transition);
+        }
+        .btn-icon:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* ═══════════════════════════════════════════════
+           GLASS CARDS & STATS
            ═══════════════════════════════════════════════ */
         .glass {
             background: var(--bg-glass);
-            backdrop-filter: blur(20px) saturate(1.3);
-            -webkit-backdrop-filter: blur(20px) saturate(1.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
             box-shadow: var(--shadow-glass);
             transition: all var(--transition);
         }
         .glass:hover {
             border-color: var(--border-glass-hover);
-            box-shadow: var(--shadow-glass), var(--shadow-glow);
-        }
-        .glass-strong {
-            background: var(--bg-glass-strong);
-            backdrop-filter: blur(28px) saturate(1.4);
-            -webkit-backdrop-filter: blur(28px) saturate(1.4);
-            border: 1px solid var(--border-glass);
-            box-shadow: var(--shadow-glass);
         }
 
-        /* ═══════════════════════════════════════════════
-           HEADER
-           ═══════════════════════════════════════════════ */
-        .header {
-            position: sticky; top: 0; z-index: 100;
-            background: var(--bg-glass-strong);
-            backdrop-filter: blur(24px) saturate(1.5);
-            -webkit-backdrop-filter: blur(24px) saturate(1.5);
-            border-bottom: 1px solid var(--border-glass);
-            padding: 0 24px; height: 72px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .header-content {
-            width: 100%; max-width: 1200px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .brand-section { display: flex; align-items: center; gap: 14px; }
-        .logo {
-            width: 40px; height: 40px; border-radius: var(--radius-sm);
-            object-fit: cover;
-            border: 1px solid var(--border-glass);
-            box-shadow: 0 0 20px var(--primary-glow);
-            transition: all var(--spring);
-        }
-        .logo:hover { transform: scale(1.1) rotate(-5deg); box-shadow: 0 0 30px var(--primary-glow); }
-        .brand-text { display: flex; flex-direction: column; }
-        .brand-text h1 {
-            font-family: var(--font-heading); font-size: 20px; font-weight: 800;
-            letter-spacing: -0.5px; color: var(--text-main); line-height: 1.2;
-            background: linear-gradient(135deg, var(--primary), var(--cyan));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .version {
-            font-size: 10px; font-weight: 700; color: var(--text-muted);
-            text-transform: uppercase; letter-spacing: 2px;
-        }
-        .header-actions { display: flex; align-items: center; gap: 10px; }
-
-        /* ═══════════════════════════════════════════════
-           BUTTONS
-           ═══════════════════════════════════════════════ */
-        .icon-btn {
-            background: var(--bg-surface); border: 1px solid var(--border-glass);
-            border-radius: var(--radius-full); width: 40px; height: 40px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 17px; color: var(--text-muted);
-            transition: all var(--spring); position: relative; overflow: hidden;
-        }
-        .icon-btn:hover {
-            background: var(--bg-surface-hover); color: var(--text-main);
-            transform: scale(1.1); border-color: var(--border-glass-hover);
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-
-        .btn {
-            padding: 10px 20px; border-radius: var(--radius-sm);
-            font-size: 13px; font-weight: 700; cursor: pointer;
-            transition: all var(--spring); border: none;
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            font-family: var(--font-heading); letter-spacing: 0.3px;
-            position: relative; overflow: hidden;
-        }
-        .btn:active { transform: scale(0.97); }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), #6d28d9);
-            color: #fff;
-            box-shadow: var(--shadow-btn), inset 0 1px 0 rgba(255,255,255,0.15);
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, var(--primary-hover), var(--primary));
-            box-shadow: 0 6px 25px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.2);
-            transform: translateY(-2px);
-        }
-        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-        .btn-outline {
-            background: var(--bg-surface); color: var(--text-main);
-            border: 1px solid var(--border-glass);
-        }
-        .btn-outline:hover {
-            background: var(--bg-surface-hover);
-            border-color: var(--primary);
-            box-shadow: 0 0 15px var(--primary-glow);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, var(--red), #be123c);
-            color: #fff; box-shadow: 0 4px 15px var(--red-glow);
-        }
-        .btn-danger:hover { box-shadow: 0 6px 25px var(--red-glow); transform: translateY(-2px); }
-
-        /* Status Pill */
-        .status-pill {
-            display: flex; align-items: center; gap: 8px;
-            padding: 7px 16px; border-radius: var(--radius-full);
-            font-size: 12px; font-weight: 700; cursor: pointer;
-            transition: all var(--spring); user-select: none;
-            font-family: var(--font-heading); letter-spacing: 0.5px;
-        }
-        .status-pill:hover { transform: scale(1.05); }
-        .status-pill.active {
-            background: var(--green-soft); border: 1px solid var(--green-border);
-            color: var(--green); box-shadow: 0 0 15px var(--green-glow);
-        }
-        .status-pill.paused {
-            background: var(--red-soft); border: 1px solid var(--red-border);
-            color: var(--red); box-shadow: 0 0 15px var(--red-glow);
-        }
-        .dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        .active .dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
-        .paused .dot { background: var(--red); animation: none; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-        /* ═══════════════════════════════════════════════
-           LAYOUT
-           ═══════════════════════════════════════════════ */
-        .layout {
-            position: relative; z-index: 1;
-            max-width: 1200px; margin: 0 auto; padding: 32px 24px;
-            display: grid; grid-template-columns: 220px 1fr; gap: 28px;
-        }
-        @media (max-width: 860px) {
-            .layout { grid-template-columns: 1fr; padding: 20px 16px; }
-            .sidebar { flex-direction: row; overflow-x: auto; position: static; gap: 6px; }
-            .nav-item { white-space: nowrap; font-size: 13px; padding: 8px 14px; }
-            .header-actions .btn-label { display: none; }
-            .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        }
-
-        /* ═══════════════════════════════════════════════
-           SIDEBAR
-           ═══════════════════════════════════════════════ */
-        .sidebar {
-            display: flex; flex-direction: column; gap: 6px;
-            position: sticky; top: 104px; align-self: start;
-        }
-        .nav-item {
-            padding: 11px 18px; border-radius: var(--radius-sm);
-            font-size: 14px; font-weight: 600; color: var(--text-muted);
-            cursor: pointer; transition: all var(--transition);
-            display: flex; align-items: center; gap: 12px;
-            border: 1px solid transparent; background: transparent;
-            text-align: left; font-family: var(--font-heading); width: 100%;
-        }
-        .nav-item:hover {
-            color: var(--text-main); background: var(--bg-surface);
-            border-color: var(--border-glass);
-        }
-        .nav-item.on {
-            color: var(--primary); background: var(--primary-soft);
-            border-color: var(--border-glow);
-            box-shadow: 0 0 20px var(--primary-glow), var(--shadow-glass);
-            font-weight: 700;
-        }
-        .nav-icon { font-size: 17px; }
-
-        /* ═══════════════════════════════════════════════
-           CONTENT + PANELS
-           ═══════════════════════════════════════════════ */
-        .content { display: flex; flex-direction: column; gap: 24px; }
-        .panel { display: none; }
-        .panel.on { display: block; animation: panelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
-        @keyframes panelIn {
-            from { opacity: 0; transform: translateY(16px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* ═══════════════════════════════════════════════
-           STAT CARDS
-           ═══════════════════════════════════════════════ */
-        .stats-row {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
         }
         .stat-card {
-            border-radius: var(--radius); padding: 20px;
-            display: flex; flex-direction: column; gap: 6px;
-            position: relative; overflow: hidden;
+            padding: 22px 24px;
+            position: relative;
+            overflow: hidden;
         }
-        .stat-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--cyan));
-            opacity: 0.6;
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 80px; height: 80px;
+            background: radial-gradient(circle, var(--primary-soft), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
         }
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        .stat-icon { font-size: 20px; }
         .stat-val {
-            font-family: var(--font-heading); font-size: 32px; font-weight: 900;
-            letter-spacing: -1px; line-height: 1;
-            background: linear-gradient(135deg, var(--text-main), var(--primary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .stat-lbl {
-            font-size: 11px; font-weight: 700; color: var(--text-muted);
-            text-transform: uppercase; letter-spacing: 1.5px;
-        }
-        .stat-icon {
-            position: absolute; top: 14px; right: 16px;
-            font-size: 28px; opacity: 0.2;
-        }
-
-        /* ═══════════════════════════════════════════════
-           GLASS CARDS
-           ═══════════════════════════════════════════════ */
-        .card {
-            border-radius: var(--radius); padding: 24px;
-            margin-bottom: 20px;
-        }
-        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-        .card-title {
-            font-family: var(--font-heading); font-size: 17px; font-weight: 700;
-            color: var(--text-main); letter-spacing: -0.3px;
-        }
-        .card-desc {
-            font-size: 13px; color: var(--text-muted); margin-bottom: 18px;
-            line-height: 1.7;
-        }
-        .card-icon { font-size: 20px; }
-
-        /* ═══════════════════════════════════════════════
-           FORM ELEMENTS
-           ═══════════════════════════════════════════════ */
-        .fg { margin-bottom: 18px; }
-        .fl {
-            display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary);
-            margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px;
             font-family: var(--font-heading);
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--text-main);
+            letter-spacing: -1px;
         }
-        .fi {
-            width: 100%; padding: 12px 16px;
-            background: var(--input-bg); border: 1px solid var(--input-border);
-            border-radius: var(--radius-sm); color: var(--text-main);
-            font-size: 14px; font-family: var(--font-body); transition: all var(--transition);
-        }
-        .fi:focus {
-            outline: none; border-color: var(--input-focus);
-            box-shadow: 0 0 0 3px var(--input-focus-ring), 0 0 20px var(--primary-glow);
-        }
-        .fi::placeholder { color: var(--text-dim); }
+        .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
         /* ═══════════════════════════════════════════════
-           CHIPS + RADIOS
+           NAV TABS
            ═══════════════════════════════════════════════ */
-        .chips, .radios { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chip, .radio {
-            padding: 9px 18px; border-radius: var(--radius-full);
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            border: 1px solid var(--border-glass); background: var(--bg-surface);
-            color: var(--text-muted); transition: all var(--spring);
-            user-select: none; font-family: var(--font-heading);
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: var(--bg-surface);
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glass);
+            margin-bottom: 24px;
+            overflow-x: auto;
         }
-        .chip:hover, .radio:hover {
-            border-color: var(--border-glass-hover); color: var(--text-main);
-            background: var(--bg-surface-hover); transform: translateY(-1px);
+        .tab-btn {
+            padding: 10px 18px;
+            border-radius: var(--radius-xs);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all var(--transition);
+            white-space: nowrap;
         }
-        .chip.sel, .radio.sel {
-            background: var(--primary-soft);
-            border-color: var(--primary);
-            color: var(--primary); font-weight: 700;
-            box-shadow: 0 0 15px var(--primary-glow);
+        .tab-btn:hover { color: var(--text-main); background: var(--bg-surface-hover); }
+        .tab-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 12px var(--primary-glow);
         }
 
-        /* ═══════════════════════════════════════════════
-           UPLOAD ZONE
-           ═══════════════════════════════════════════════ */
-        .upload {
-            border: 2px dashed var(--border-glass-hover); border-radius: var(--radius);
-            padding: 48px 20px; text-align: center; cursor: pointer;
-            transition: all var(--spring);
-            background: var(--bg-surface); position: relative; overflow: hidden;
-        }
-        .upload::before {
-            content: ''; position: absolute; inset: -2px; border-radius: var(--radius);
-            background: conic-gradient(from 0deg, var(--primary), var(--cyan), var(--primary));
-            opacity: 0; transition: opacity 0.5s; z-index: -1;
-            animation: borderRotate 3s linear infinite;
-        }
-        @keyframes borderRotate { to { transform: rotate(360deg); } }
-        .upload:hover::before, .upload.over::before { opacity: 0.3; }
-        .upload:hover, .upload.over {
-            border-color: var(--primary); background: var(--primary-soft);
-            transform: scale(1.01); box-shadow: 0 0 30px var(--primary-glow);
-        }
-        .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-        .upload-icon { font-size: 40px; margin-bottom: 14px; }
-        .upload-text { font-size: 15px; font-weight: 600; color: var(--text-main); font-family: var(--font-heading); }
-        .upload-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
         /* ═══════════════════════════════════════════════
-           HISTORY
+           AI JOB INTELLIGENCE & REALITY STYLING
            ═══════════════════════════════════════════════ */
-        .hist-list { display: flex; flex-direction: column; gap: 10px; }
-        .hist {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 18px; border-radius: var(--radius-sm);
-            border: 1px solid var(--border-glass); background: var(--bg-surface);
+        .intel-hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            border-left: 4px solid var(--cyan);
+        }
+        .intel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .intel-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+            position: relative;
             transition: all var(--transition);
         }
-        .hist:hover {
-            border-color: var(--border-glass-hover); transform: translateX(4px);
-            box-shadow: 0 0 15px var(--primary-glow);
+        .intel-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border-glow);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
         }
-        .hist-date { font-weight: 700; font-size: 14px; color: var(--text-main); font-family: var(--font-heading); }
-        .hist-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
-        .badge {
-            padding: 5px 14px; border-radius: var(--radius-full);
-            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
-            font-family: var(--font-heading);
+        .intel-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
         }
-        .badge-ok { background: var(--green-soft); color: var(--green); border: 1px solid var(--green-border); }
-        .badge-wait { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber-border); }
+        .score-pill-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .score-badge {
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .score-match { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+        .score-reality { background: linear-gradient(135deg, #059669, #10b981); }
+        .score-rec { background: rgba(139, 92, 246, 0.2); color: var(--primary-hover); border: 1px solid rgba(139, 92, 246, 0.4); }
+
+        .progress-bar-wrap {
+            margin-top: 6px;
+            margin-bottom: 12px;
+        }
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .bar-bg {
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--cyan), var(--primary));
+            transition: width 0.6s ease;
+        }
+
+        /* ── Intelligence Modal ── */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.25s ease; }
+        .modal-content {
+            background: var(--bg-base);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            max-width: 800px;
+            width: 100%;
+            max-height: 88vh;
+            overflow-y: auto;
+            padding: 32px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            border-radius: 50%;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 14px;
+        }
+        .modal-close:hover { color: #fff; background: var(--red); }
+
+        /* ── Progress / Loading State ── */
+        .loading-box {
+            display: none;
+            padding: 30px;
+            text-align: center;
+            border: 1px dashed var(--cyan);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            background: rgba(6, 182, 212, 0.05);
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(6,182,212,0.2);
+            border-top: 4px solid var(--cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* ═══════════════════════════════════════════════
-           SCHEDULE
+           BUTTONS & CHIPS
            ═══════════════════════════════════════════════ */
-        .sched-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
-        .sched {
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all var(--transition);
+            border: none;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            color: #fff;
+            box-shadow: var(--shadow-btn);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(139,92,246,0.5); }
+        .btn-cyan {
+            background: linear-gradient(135deg, #0891b2, #06b6d4);
+            color: #fff;
+            box-shadow: 0 4px 15px var(--cyan-glow);
+        }
+        .btn-cyan:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(6,182,212,0.5); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+        }
+        .btn-outline:hover { border-color: var(--primary); background: var(--bg-surface-hover); }
+
+        .chip {
+            padding: 8px 14px;
+            border-radius: var(--radius-full);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glass);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition);
+        }
+        .chip:hover { border-color: var(--primary); background: var(--bg-surface-hover); transform: translateY(-1px); }
+        .chip.selected { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-hover); font-weight: 700; }
+
+        /* ── Ranked Sector List ── */
+        .ranked-item {
+            display: flex; align-items: center; justify-content: space-between;
             background: var(--bg-surface); border: 1px solid var(--border-glass);
-            border-radius: var(--radius-sm); padding: 24px; text-align: center;
-            transition: all var(--spring); position: relative; overflow: hidden;
+            padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 8px;
         }
-        .sched:hover { border-color: var(--border-glow); transform: translateY(-3px); box-shadow: 0 0 20px var(--primary-glow); }
-        .sched-time {
-            font-family: var(--font-heading); font-size: 28px; font-weight: 800;
-            color: var(--text-main); margin: 10px 0 4px; letter-spacing: -0.5px;
+        .rank-num {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: var(--primary-soft); color: var(--primary-hover);
+            border: 1px solid rgba(139,92,246,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 800;
         }
-        .sched-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .btn-arrow {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass);
+            color: var(--text-muted); border-radius: 6px; width: 28px; height: 28px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-arrow:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        /* ═══════════════════════════════════════════════
-           ACTION CARDS
-           ═══════════════════════════════════════════════ */
-        .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-        .action-card {
-            border-radius: var(--radius); padding: 22px; text-align: left;
-            cursor: pointer; transition: all var(--spring);
-            background: var(--bg-glass); border: 1px solid var(--border-glass);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        }
-        .action-card:hover {
-            border-color: var(--primary); transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 0 25px var(--primary-glow);
-        }
-        .action-icon { font-size: 28px; margin-bottom: 14px; }
-        .action-title {
-            font-family: var(--font-heading); font-size: 15px; font-weight: 700;
-            color: var(--text-main); margin-bottom: 4px;
-        }
-        .action-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
-
-        /* ═══════════════════════════════════════════════
-           QUICK LINKS
-           ═══════════════════════════════════════════════ */
-        .quick-link {
-            display: flex; align-items: center; gap: 10px;
-            color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px;
-            padding: 10px 14px; border-radius: var(--radius-xs);
-            transition: all var(--transition);
-            font-family: var(--font-heading);
-        }
-        .quick-link:hover {
-            background: var(--primary-soft); transform: translateX(4px);
-        }
-
-        /* ═══════════════════════════════════════════════
-           TOAST NOTIFICATIONS
-           ═══════════════════════════════════════════════ */
+        /* ── Toast ── */
+        .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         .toast {
-            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-            padding: 14px 22px; border-radius: var(--radius-sm);
-            font-size: 14px; font-weight: 600; color: #fff;
-            font-family: var(--font-heading);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            animation: toastIn 0.4s var(--spring);
-            max-width: 420px;
+            padding: 14px 20px; border-radius: var(--radius-sm);
+            background: var(--bg-glass-strong); backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass); color: var(--text-main);
+            font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; align-items: center; gap: 10px;
         }
-        .toast-ok {
-            background: rgba(52, 211, 153, 0.9); border: 1px solid var(--green-border);
-            box-shadow: 0 8px 30px var(--green-glow);
-        }
-        .toast-err {
-            background: rgba(244, 63, 94, 0.9); border: 1px solid var(--red-border);
-            box-shadow: 0 8px 30px var(--red-glow);
-        }
-        @keyframes toastIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.9); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* ═══════════════════════════════════════════════
-           SPINNER
-           ═══════════════════════════════════════════════ */
-        .spin {
-            width: 16px; height: 16px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-top-color: currentColor; border-radius: 50%;
-            animation: sp 0.6s linear infinite;
-            display: inline-block; vertical-align: middle;
-        }
-        @keyframes sp { to { transform: rotate(360deg); } }
-
-        /* ═══════════════════════════════════════════════
-           MISC
-           ═══════════════════════════════════════════════ */
-        .last-updated {
-            font-size: 11px; color: var(--text-dim); text-align: right;
-            margin-top: -16px; margin-bottom: 16px; font-weight: 500;
-        }
-        .divider {
-            height: 1px; background: var(--border-glass); margin: 16px 0;
-        }
-
-        /* Entrance animations for staggered load */
-        .stagger { opacity: 0; animation: staggerIn 0.5s ease forwards; }
-        .stagger:nth-child(1) { animation-delay: 0.05s; }
-        .stagger:nth-child(2) { animation-delay: 0.1s; }
-        .stagger:nth-child(3) { animation-delay: 0.15s; }
-        .stagger:nth-child(4) { animation-delay: 0.2s; }
-        @keyframes staggerIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-glass-hover); border-radius: 99px; }
+        .toast.success { border-color: var(--green); color: var(--green); }
+        .toast.error { border-color: var(--red); color: var(--red); }
     </style>
 </head>
 <body>
 
-<!-- Animated Background -->
-<div class="bg-mesh"></div>
-<div class="particles" id="particles"></div>
+    <!-- Ambient Mesh Background -->
+    <div class="mesh-bg">
+        <div class="mesh-orb orb-1"></div>
+        <div class="mesh-orb orb-2"></div>
+        <div class="mesh-orb orb-3"></div>
+    </div>
 
-<!-- ═══ Header ═══ -->
-<header class="header">
-    <div class="header-content">
-        <div class="brand-section">
-            <img src="/static/weblogo.png" alt="JS" class="logo" onerror="this.style.display='none'">
-            <div class="brand-text">
-                <h1>JobScout-AI</h1>
-                <span class="version">Command Center</span>
+    <!-- ═══ Running Train Ticker (Right to Left) ═══ -->
+    <div class="train-ticker-wrap">
+        <div class="train-badge">🚄 LIVE ALERTS</div>
+        <div class="train-track">
+            <div class="train-content" id="trainContent">
+                <div class="train-item"><span>🚆</span> <strong>UPSC CSE 2026:</strong> 1056 Vacancies Open &bull; Apply before 05 Mar <span class="hot">HOT</span></div>
+                <div class="train-item"><span>🚄</span> <strong>RRB Junior Engineer:</strong> 4500 Posts Across All Zones &bull; Level-6 CPC</div>
+                <div class="train-item"><span>🚆</span> <strong>SBI PO Recruitment:</strong> 2000 Probationary Officers &bull; Any Graduate</div>
+                <div class="train-item"><span>🚄</span> <strong>DRDO Scientist 'B':</strong> 180 Direct Entry Positions via GATE 2026 <span class="hot">NEW</span></div>
+                <div class="train-item"><span>🚆</span> <strong>SSC CGL 2026:</strong> Group B & C Vacancies &bull; Tier-1 Dates Announced</div>
+                <div class="train-item"><span>🚄</span> <strong>Indian Army Technical Entry:</strong> 10+2 TES Scheme &bull; Permanent Commission</div>
+                <div class="train-item"><span>🚆</span> <strong>State PSC Assistant Engineer:</strong> 340 Posts in PWD & Irrigation</div>
             </div>
-        </div>
-        <div class="header-actions">
-            <button id="themeToggle" class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">
-                <span id="themeIcon">☀️</span>
-            </button>
-            <div id="pill" class="status-pill active" onclick="toggleStatus()">
-                <span class="dot"></span><span id="pillTxt">Active</span>
-            </div>
-            <button class="btn btn-primary" id="btnReport" onclick="sendReport(this)">
-                <span>📧</span> <span class="btn-label">Send Report</span>
-            </button>
         </div>
     </div>
-</header>
 
-<!-- ═══ Main Layout ═══ -->
-<main class="layout">
-
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <button class="nav-item on" onclick="tab('profile',this)">
-            <span class="nav-icon">👤</span> Profile
-        </button>
-        <button class="nav-item" onclick="tab('schedule',this)">
-            <span class="nav-icon">📅</span> Schedule
-        </button>
-        <button class="nav-item" onclick="tab('resume',this)">
-            <span class="nav-icon">📄</span> Resume
-        </button>
-        <button class="nav-item" onclick="tab('history',this)">
-            <span class="nav-icon">📬</span> History
-        </button>
-        <button class="nav-item" onclick="tab('actions',this)">
-            <span class="nav-icon">⚡</span> Actions
-        </button>
-    </aside>
-
-    <!-- Content -->
-    <div class="content">
-
-        <!-- Stats Row -->
-        <div class="stats-row">
-            <div class="stat-card glass stagger">
-                <span class="stat-icon">📋</span>
-                <span class="stat-lbl">Pending Today</span>
-                <span class="stat-val" id="sP" data-target="0">—</span>
-            </div>
-            <div class="stat-card glass stagger">
-                <span class="stat-icon">📥</span>
-                <span class="stat-lbl">Total Scraped</span>
-                <span class="stat-val" id="sT" data-target="0">—</span>
-            </div>
-            <div class="stat-card glass stagger">
-                <span class="stat-icon">📧</span>
-                <span class="stat-lbl">Digests Sent</span>
-                <span class="stat-val" id="sD" data-target="0">—</span>
-            </div>
-            <div class="stat-card glass stagger">
-                <span class="stat-icon">🌐</span>
-                <span class="stat-lbl">Job Sources</span>
-                <span class="stat-val" id="sS">4</span>
-            </div>
-        </div>
-        <div class="last-updated" id="lastUpdated"></div>
-
-        <!-- ═══ Profile Panel ═══ -->
-        <div id="p-profile" class="panel on">
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">📧</span><h2 class="card-title">Identity</h2>
-                </div>
-                <div class="fg">
-                    <label class="fl">Email Address</label>
-                    <input class="fi" id="iEmail" type="email" placeholder="your@email.com">
-                </div>
-                <div class="fg">
-                    <label class="fl">Qualification / Degree</label>
-                    <input class="fi" id="iQual" placeholder="e.g., B.Tech, BSc, BCA, Law, MBA">
+    <!-- ═══ Main Wrapper ═══ -->
+    <div class="wrapper">
+        
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <div class="brand-logo">⚡</div>
+                <div>
+                    <h1 class="brand-title">JobScout-AI</h1>
+                    <div class="brand-subtitle">
+                        <span>Autonomous Sarkari Intelligence & Reality Check</span>
+                        <span>&bull;</span>
+                        <span id="activeStatusPill" style="color:var(--green);">🟢 Active 24/7</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">🎯</span><h2 class="card-title">Job Sectors</h2>
+            <div class="header-actions">
+                <div class="groq-pill" onclick="diagnosePipeline()" style="cursor:pointer;" title="Click for live Groq AI benchmark">
+                    <span class="pulse-dot"></span>
+                    <span>Groq LPU: <strong id="groqModelLabel">Dual Agents Online</strong></span>
                 </div>
-                <p class="card-desc">Select the government sectors you're interested in.</p>
-                <div class="chips" id="chipBox"></div>
-            </div>
-
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">💼</span><h2 class="card-title">Experience Level</h2>
-                </div>
-                <div class="radios" id="expBox"></div>
-            </div>
-
-            <div style="margin-top: 12px;">
-                <button class="btn btn-primary" onclick="saveProfile()" id="btnSave">
-                    💾 Save Profile
+                <button class="btn-icon" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+                    <span id="themeIcon">☀️</span>
                 </button>
             </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card glass">
+                <div class="stat-header"><span class="stat-label">Active Openings</span><span class="stat-icon">📋</span></div>
+                <div class="stat-val" id="statPending">0</div>
+                <div class="stat-sub">Strictly verified non-expired jobs</div>
+            </div>
+            <div class="stat-card glass">
+                <div class="stat-header"><span class="stat-label">Total Jobs Indexed</span><span class="stat-icon">🏛️</span></div>
+                <div class="stat-val" id="statTotal">32</div>
+                <div class="stat-sub">15-day rolling cloud retention</div>
+            </div>
+            <div class="stat-card glass">
+                <div class="stat-header"><span class="stat-label">PDF Digests Sent</span><span class="stat-icon">📬</span></div>
+                <div class="stat-val" id="statSent">0</div>
+                <div class="stat-sub">Delivered via Brevo Email API</div>
+            </div>
+            <div class="stat-card glass">
+                <div class="stat-header"><span class="stat-label">Monitored Portals</span><span class="stat-icon">🌐</span></div>
+                <div class="stat-val">4</div>
+                <div class="stat-sub">SarkariResult &bull; FreeJobAlert &bull; Exam &bull; Rojgar</div>
+            </div>
         </div>
 
-        <!-- ═══ Schedule Panel ═══ -->
-        <div id="p-schedule" class="panel">
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">📅</span><h2 class="card-title">Digest Schedule</h2>
-                </div>
-                <p class="card-desc">You receive <strong>two professional PDF digests</strong> daily with all matched government jobs, delivered right to your inbox.</p>
-                <div class="sched-grid">
-                    <div class="sched glass">
-                        <div style="font-size:36px;">🌅</div>
-                        <div class="sched-time">10:00 AM</div>
-                        <div class="sched-lbl">Morning Digest</div>
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('intelligence', this)">🧠 AI Job Intelligence & Reality</button>
+            <button class="tab-btn" onclick="switchTab('profile', this)">👤 Profile & Preferences</button>
+            <button class="tab-btn" onclick="switchTab('actions', this)">⚡ Quick Actions</button>
+            <button class="tab-btn" onclick="switchTab('resume', this)">📄 Resume AI Parser</button>
+            <button class="tab-btn" onclick="switchTab('history', this)">📬 Digest History</button>
+            <button class="tab-btn" onclick="switchTab('diagnostics', this)">🔬 System Diagnostics</button>
+        </div>
+
+        <!-- ═══ Panel 1: AI Job Intelligence & Reality (PRIMARY NEW FEATURE) ═══ -->
+        <div id="panel-intelligence" class="panel active">
+            
+            <!-- Hero Card -->
+            <div class="glass intel-hero">
+                <div>
+                    <h2 style="font-size:20px; font-weight:800; font-family:var(--font-heading); margin-bottom:4px;">
+                        🔍 AI Job Intelligence & Workplace Reality Engine
+                    </h2>
+                    <div style="font-size:13px; color:var(--text-muted); max-width:680px; line-height:1.5;">
+                        JobScout doesn't just find jobs. It uses <strong>Dual Groq LPU Agents</strong> to investigate each role, compute deterministic 6-factor match scores, and synthesize verified public workplace evidence before recommending you apply.
                     </div>
-                    <div class="sched glass">
-                        <div style="font-size:36px;">🌇</div>
-                        <div class="sched-time">6:00 PM</div>
-                        <div class="sched-lbl">Evening Digest</div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-cyan" onclick="runJobIntelligence()">⚡ Run Intelligence & Reality Check</button>
+                    <a href="/api/intelligence/download-pdf" target="_blank" class="btn btn-outline">📄 Download Reality PDF</a>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="intelLoading" class="loading-box">
+                <div class="spinner"></div>
+                <div style="font-size:16px; font-weight:700; color:var(--cyan);" id="intelLoadingStep">
+                    Step 1/4: Analyzing structured job requirements with Groq Agent #1...
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">
+                    Researching public employee signals, interview difficulty, and calculating deterministic compatibility...
+                </div>
+            </div>
+
+            <!-- Intelligence Cards Grid -->
+            <div class="intel-grid" id="intelGrid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- ═══ Panel 2: Profile & Preferences ═══ -->
+        <div id="panel-profile" class="panel">
+            <div class="glass" style="padding: 28px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div>
+                        <h2 style="font-size:18px; font-weight:800; font-family:var(--font-heading);">Personal Career Profile</h2>
+                        <div style="font-size:12px; color:var(--text-muted);">Set your qualification and rank your sector preferences to customize match scoring.</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Preferences</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top:20px;">
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">Alert Email Address</label>
+                        <input type="email" id="inputEmail" style="width:100%; padding:12px 16px; border-radius:var(--radius-sm); background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main);" placeholder="your.email@example.com">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">Highest Qualification / Degree</label>
+                        <input type="text" id="inputQual" style="width:100%; padding:12px 16px; border-radius:var(--radius-sm); background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main);" placeholder="e.g. B.Tech (Civil), BSc, Law, MBA, 12th Pass">
                     </div>
                 </div>
-            </div>
 
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">🔔</span><h2 class="card-title">Deadline Reminders</h2>
+                <div style="margin-top:20px;">
+                    <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">Experience Level</label>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;" id="expButtons">
+                        <div class="chip selected" onclick="setExp('Fresher', this)">🌱 Fresher (0-1 yr)</div>
+                        <div class="chip" onclick="setExp('0-2 yrs', this)">💼 Junior (1-2 yrs)</div>
+                        <div class="chip" onclick="setExp('2+ yrs', this)">⭐ Experienced (2+ yrs)</div>
+                    </div>
                 </div>
-                <p class="card-desc" style="margin-bottom:0;">Automatic reminders are sent at <strong>3 days</strong>, <strong>1 day</strong>, and the <strong>last day</strong> of application deadlines.</p>
-            </div>
 
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">⚙️</span><h2 class="card-title">System Status</h2>
-                </div>
-                <div id="schedStatus" style="font-size:14px;color:var(--text-main);">Checking...</div>
-            </div>
-        </div>
-
-        <!-- ═══ Resume Panel ═══ -->
-        <div id="p-resume" class="panel">
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">📄</span><h2 class="card-title">Upload Resume</h2>
-                </div>
-                <p class="card-desc">Upload your resume and our AI extracts your skills, qualifications, and experience to improve job matching accuracy.</p>
-                <div class="upload" id="upZone">
-                    <input type="file" id="upFile" accept=".pdf,.doc,.docx,.txt" onchange="uploadResume(event)">
-                    <div class="upload-icon">📎</div>
-                    <div class="upload-text">Drag & drop your resume or click to browse</div>
-                    <div class="upload-hint">PDF, DOC, DOCX, TXT — Max 5MB</div>
-                </div>
-                <div id="upStatus" style="margin-top:16px;display:none;font-size:14px;"></div>
-            </div>
-            <div class="card glass" id="resumeCard" style="display:none;">
-                <div class="card-header">
-                    <span class="card-icon">✅</span><h2 class="card-title">Resume on File</h2>
-                </div>
-                <div id="resumeInfo" style="font-size:14px;color:var(--text-main);line-height:1.7;"></div>
-            </div>
-        </div>
-
-        <!-- ═══ History Panel ═══ -->
-        <div id="p-history" class="panel">
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">📬</span><h2 class="card-title">Digest History</h2>
-                </div>
-                <div id="histList" class="hist-list">
-                    <p style="color:var(--text-muted);text-align:center;padding:30px;">Loading...</p>
+                <div style="margin-top:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <label style="font-size:12px; font-weight:700; color:var(--text-muted);">🎯 Ranked Sector Preferences (Priority Hierarchy)</label>
+                        <span style="font-size:12px; color:var(--text-muted);">1st priority receives 35% match weight</span>
+                    </div>
+                    <div id="rankedList"></div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-top:14px; margin-bottom:8px;">Add More Sectors to Priority Hierarchy:</label>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;" id="sectorPool"></div>
                 </div>
             </div>
         </div>
 
-        <!-- ═══ Actions Panel ═══ -->
-        <div id="p-actions" class="panel">
-            <div class="action-grid">
-                <div class="action-card" onclick="testEmail(this)">
-                    <div class="action-icon">📧</div>
-                    <div class="action-title" id="actTest">Test Email Service</div>
-                    <div class="action-desc">Send a test email to verify integration is working</div>
+        <!-- ═══ Panel 3: Quick Actions ═══ -->
+        <div id="panel-actions" class="panel">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                <div class="glass" style="padding:24px; cursor:pointer;" onclick="triggerScrape()">
+                    <div style="font-size:28px; margin-bottom:4px;">🔍</div>
+                    <div style="font-size:16px; font-weight:700; color:var(--text-main);">Run Scraper Now</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Scrape all 4 government portals immediately and extract jobs via Groq AI.</div>
                 </div>
-                <div class="action-card" onclick="triggerDigest(this)">
-                    <div class="action-icon">📄</div>
-                    <div class="action-title" id="actDigest">Send Digest Now</div>
-                    <div class="action-desc">Manually trigger PDF digest for pending jobs</div>
+                <div class="glass" style="padding:24px; cursor:pointer;" onclick="triggerDigest()">
+                    <div style="font-size:28px; margin-bottom:4px;">📄</div>
+                    <div style="font-size:16px; font-weight:700; color:var(--text-main);">Send PDF Digest Now</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Compile current non-expired job queue into a branded PDF and email it immediately.</div>
                 </div>
-                <div class="action-card" onclick="triggerScrape(this)">
-                    <div class="action-icon">🔍</div>
-                    <div class="action-title" id="actScrape">Run Scraper</div>
-                    <div class="action-desc">Trigger immediate scrape of all job portals</div>
+                <div class="glass" style="padding:24px; cursor:pointer;" onclick="testEmail()">
+                    <div style="font-size:28px; margin-bottom:4px;">📧</div>
+                    <div style="font-size:16px; font-weight:700; color:var(--text-main);">Send Test Email</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Verify Brevo transactional email delivery to your inbox.</div>
                 </div>
-                <div class="action-card" onclick="toggleStatus()">
-                    <div class="action-icon" id="actToggleIcon">⏸️</div>
-                    <div class="action-title" id="actToggle">Pause Notifications</div>
-                    <div class="action-desc">Toggle notification delivery on or off</div>
+                <div class="glass" style="padding:24px; cursor:pointer;" onclick="toggleStatus()">
+                    <div style="font-size:28px; margin-bottom:4px;" id="toggleIcon">⏸️</div>
+                    <div style="font-size:16px; font-weight:700; color:var(--text-main);" id="toggleTitle">Pause Alerts</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Temporarily pause scheduled emails or resume automatic monitoring.</div>
                 </div>
             </div>
+        </div>
 
-            <div class="card glass" style="margin-top:20px;">
-                <div class="card-header">
-                    <span class="card-icon">📬</span><h2 class="card-title">Brevo Email Status</h2>
+        <!-- ═══ Panel 4: Resume Parser ═══ -->
+        <div id="panel-resume" class="panel">
+            <div class="glass" style="padding: 28px;">
+                <h2 style="font-size:18px; font-weight:800; font-family:var(--font-heading); margin-bottom:8px;">AI Resume Analyzer</h2>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Upload your resume (PDF, DOCX, TXT) and Groq AI will automatically extract your qualification, specialization, and optimal sector matches.</p>
+                <div style="border: 2px dashed var(--border-glass); border-radius: var(--radius); padding: 40px 20px; text-align:center; cursor:pointer;" onclick="document.getElementById('resumeFileInput').click()">
+                    <input type="file" id="resumeFileInput" accept=".pdf,.docx,.txt" style="display:none;" onchange="uploadResume(event)">
+                    <div style="font-size:40px; margin-bottom:12px;">📄</div>
+                    <div style="font-size:15px; font-weight:700; color:var(--text-main);">Click or Drag & Drop Resume Here</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Supported: PDF, DOCX, TXT (Max 5MB)</div>
                 </div>
-                <div id="brevoStatus" style="font-size:14px;color:var(--text-main);margin-bottom:16px;">Click to check...</div>
-                <button class="btn btn-outline" onclick="verifyBrevo()">🔍 Check Connection</button>
+                <div id="resumeResultBox" style="display:none; margin-top:20px; padding:16px; border-radius:var(--radius-sm); background:var(--bg-surface); border:1px solid var(--border-glass);">
+                    <div style="font-weight:700; color:var(--green); margin-bottom:6px;">✅ Resume Parsed Successfully</div>
+                    <div id="resumeResultText" style="font-size:13px; color:var(--text-secondary); line-height:1.6;"></div>
+                </div>
             </div>
+        </div>
 
-            <div class="card glass">
-                <div class="card-header">
-                    <span class="card-icon">🔗</span><h2 class="card-title">Quick Links</h2>
+        <!-- ═══ Panel 5: History ═══ -->
+        <div id="panel-history" class="panel">
+            <div class="glass" style="padding: 28px;">
+                <h2 style="font-size:18px; font-weight:800; font-family:var(--font-heading); margin-bottom:16px;">PDF Digest Delivery Log</h2>
+                <div id="historyList"><p style="color:var(--text-muted); text-align:center; padding:30px;">Loading history log...</p></div>
+            </div>
+        </div>
+
+        <!-- ═══ Panel 6: System Diagnostics ═══ -->
+        <div id="panel-diagnostics" class="panel">
+            <div class="glass" style="padding: 28px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <div>
+                        <h2 style="font-size:18px; font-weight:800; font-family:var(--font-heading);">End-to-End Pipeline Diagnostic</h2>
+                        <div style="font-size:12px; color:var(--text-muted);">Live health check of Dual Groq AI engines, Supabase DB, Brevo Email, and APScheduler.</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="diagnosePipeline()">🔬 Run Full Benchmark</button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <a href="/health" target="_blank" class="quick-link">🩺 Health Check →</a>
-                    <a href="/api/profile" target="_blank" class="quick-link">📊 Profile JSON →</a>
-                    <a href="/api/digest-status" target="_blank" class="quick-link">📋 Digest Status →</a>
-                    <a href="/api/debug" target="_blank" class="quick-link">🔬 Pipeline Debug →</a>
-                </div>
+                <div style="background:rgba(0,0,0,0.4); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:16px; font-family:var(--font-mono); font-size:12px; color:var(--cyan); max-height:300px; overflow-y:auto; white-space:pre-wrap; line-height:1.6;" id="diagOutput">Click 'Run Full Benchmark' to test all system components...</div>
             </div>
         </div>
 
     </div>
-</main>
 
-<script>
-/* ═══════════════════════════════════════════════════════
-   THEME
-   ═══════════════════════════════════════════════════════ */
-(function initTheme() {
-    const saved = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-})();
+    <!-- ═══ Deep Job Intelligence Modal ═══ -->
+    <div class="modal-overlay" id="intelModal" onclick="if(event.target===this)closeModal()">
+        <div class="modal-content glass">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modalBody">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
 
-function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme');
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    updateThemeIcon();
-}
-function updateThemeIcon() {
-    const el = document.getElementById('themeIcon');
-    if (el) el.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
-}
+    <!-- Toast Notifications -->
+    <div class="toast-wrap" id="toastWrap"></div>
 
-/* ═══════════════════════════════════════════════════════
-   PARTICLES
-   ═══════════════════════════════════════════════════════ */
-function createParticles() {
-    const container = document.getElementById('particles');
-    if (!container) return;
-    for (let i = 0; i < 30; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        const size = Math.random() * 4 + 2;
-        p.style.width = size + 'px';
-        p.style.height = size + 'px';
-        p.style.left = Math.random() * 100 + '%';
-        p.style.animationDuration = (Math.random() * 20 + 15) + 's';
-        p.style.animationDelay = (Math.random() * 15) + 's';
-        container.appendChild(p);
-    }
-}
+    <script>
+        /* ═══════════════════════════════════════════════
+           STATE & CONFIGURATION
+           ═══════════════════════════════════════════════ */
+        const ALL_SECTORS = ["Defence", "PSU", "Railways", "Banking", "IT/Software", "UPSC", "SSC", "State Govt", "Teaching", "Judiciary", "Medical"];
+        let rankedSectors = ["Defence", "State Govt", "PSU", "Railways", "Banking"];
+        let userExp = "Fresher";
+        let userStatus = "active";
+        let cachedIntelJobs = [];
 
-/* ═══════════════════════════════════════════════════════
-   DATA + STATE
-   ═══════════════════════════════════════════════════════ */
-const INTERESTS = [
-    {n:"PSU",e:"🏭"},{n:"Banking",e:"🏦"},{n:"Railways",e:"🚂"},{n:"Defence",e:"🎖️"},
-    {n:"IT/Software",e:"💻"},{n:"SSC",e:"📊"},{n:"UPSC",e:"🏛️"},{n:"Teaching",e:"📚"},
-    {n:"State Govt",e:"🏘️"},{n:"Judiciary",e:"⚖️"},{n:"Medical",e:"🏥"}
-];
-const EXPS = ["Fresher", "0-2 yrs", "2+ yrs"];
-let selInt = [], selExp = "Fresher", curSt = "active";
-
-/* ═══════════════════════════════════════════════════════
-   INIT
-   ═══════════════════════════════════════════════════════ */
-document.addEventListener("DOMContentLoaded", () => {
-    updateThemeIcon();
-    createParticles();
-    renderChips(); renderExps();
-    loadProfile(); loadStats(); loadScheduler();
-    updateTimestamp();
-});
-
-/* ═══════════════════════════════════════════════════════
-   NAVIGATION
-   ═══════════════════════════════════════════════════════ */
-function tab(id, el) {
-    document.querySelectorAll(".nav-item").forEach(t => t.classList.remove("on"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("on"));
-    el.classList.add("on");
-    document.getElementById("p-" + id).classList.add("on");
-    if (id === "history") loadHistory();
-    if (id === "schedule") loadScheduler();
-    if (id === "actions") verifyBrevo();
-}
-
-/* ═══════════════════════════════════════════════════════
-   CHIPS + EXPERIENCE
-   ═══════════════════════════════════════════════════════ */
-function renderChips() {
-    document.getElementById("chipBox").innerHTML = INTERESTS.map(i =>
-        `<div class="chip ${selInt.includes(i.n)?'sel':''}" onclick="togChip('${i.n}',this)">${i.e} ${i.n}</div>`
-    ).join("");
-}
-function togChip(n, el) {
-    if (selInt.includes(n)) { selInt = selInt.filter(x => x !== n); el.classList.remove("sel"); }
-    else { selInt.push(n); el.classList.add("sel"); }
-}
-function renderExps() {
-    document.getElementById("expBox").innerHTML = EXPS.map(e =>
-        `<div class="radio ${selExp===e?'sel':''}" onclick="selE('${e}',this)">${e}</div>`
-    ).join("");
-}
-function selE(e, el) {
-    selExp = e;
-    document.querySelectorAll("#expBox .radio").forEach(r => r.classList.remove("sel"));
-    el.classList.add("sel");
-}
-
-/* ═══════════════════════════════════════════════════════
-   API HELPERS
-   ═══════════════════════════════════════════════════════ */
-async function safeJson(r) {
-    if (!r.ok) return { _error: true, status: r.status };
-    const ct = r.headers.get("content-type");
-    if (ct && ct.includes("application/json")) return await r.json();
-    return { _error: true, message: "Server returned non-JSON response." };
-}
-
-/* ═══════════════════════════════════════════════════════
-   LOAD PROFILE
-   ═══════════════════════════════════════════════════════ */
-async function loadProfile() {
-    try {
-        const r = await fetch("/api/profile");
-        if (!r.ok) { if (r.status !== 404) toast("Failed to load profile", "err"); return; }
-        const p = await safeJson(r);
-        if (p._error) return;
-        document.getElementById("iEmail").value = p.email || "";
-        document.getElementById("iQual").value = p.qualification || "";
-        selInt = p.interests || []; selExp = p.experience_level || "Fresher"; curSt = p.status || "active";
-        renderChips(); renderExps(); updatePill();
-        if (p.resume_url) {
-            document.getElementById("resumeCard").style.display = "block";
-            document.getElementById("resumeInfo").innerHTML =
-                `<strong>📎 Resume uploaded</strong><br>Qualification: ${p.qualification||"—"}<br>Experience: ${p.experience_level||"—"}`;
-        }
-    } catch(e) { console.error(e); }
-}
-
-/* ═══════════════════════════════════════════════════════
-   LOAD STATS (with animated counters)
-   ═══════════════════════════════════════════════════════ */
-async function loadStats() {
-    try {
-        const r = await fetch("/api/stats"); if (!r.ok) return;
-        const s = await safeJson(r); if (s._error) return;
-        animateCounter("sP", s.pending_today ?? 0);
-        animateCounter("sT", s.total_jobs ?? 0);
-        animateCounter("sD", s.digests_sent ?? 0);
-        updateTimestamp();
-    } catch(e) {}
-}
-
-function animateCounter(id, target) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    target = parseInt(target) || 0;
-    el.setAttribute("data-target", target);
-    if (target === 0) { el.textContent = "0"; return; }
-    let current = 0;
-    const step = Math.max(1, Math.ceil(target / 30));
-    const interval = setInterval(() => {
-        current += step;
-        if (current >= target) { current = target; clearInterval(interval); }
-        el.textContent = current.toLocaleString();
-    }, 30);
-}
-
-function updateTimestamp() {
-    const now = new Date();
-    const ts = now.toLocaleString('en-IN', { timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true, day:'2-digit', month:'short' });
-    const el = document.getElementById('lastUpdated');
-    if (el) el.textContent = 'Last refreshed: ' + ts;
-}
-
-/* ═══════════════════════════════════════════════════════
-   LOAD HISTORY
-   ═══════════════════════════════════════════════════════ */
-async function loadHistory() {
-    try {
-        const r = await fetch("/api/digest-history");
-        if (!r.ok) { document.getElementById("histList").innerHTML = "<p style='color:var(--text-muted);text-align:center;padding:30px;'>No history yet.</p>"; return; }
-        const h = await safeJson(r); if (h._error) throw new Error("Invalid format");
-        if (!h.length) { document.getElementById("histList").innerHTML = "<p style='color:var(--text-muted);text-align:center;padding:30px;'>No digests sent yet. Jobs are collected and emailed at 10 AM & 6 PM IST.</p>"; return; }
-        document.getElementById("histList").innerHTML = h.map(i => `
-            <div class="hist"><div><div class="hist-date">📧 ${i.date}</div><div class="hist-meta">${i.job_count} jobs • ${i.type||"Digest"}</div></div>
-            <span class="badge ${i.sent?'badge-ok':'badge-wait'}">${i.sent?'✅ Sent':'⏳ Pending'}</span></div>`).join("");
-    } catch(e) { document.getElementById("histList").innerHTML = "<p style='color:var(--red);text-align:center;'>Could not load history.</p>"; }
-}
-
-/* ═══════════════════════════════════════════════════════
-   LOAD SCHEDULER
-   ═══════════════════════════════════════════════════════ */
-async function loadScheduler() {
-    try {
-        const r = await fetch("/api/scheduler-status"); const d = await safeJson(r);
-        if (d._error) throw new Error("Format error");
-        if (d.running) {
-            let html = "<div style='color:var(--green);font-weight:700;margin-bottom:12px;font-family:var(--font-heading);'>● Running</div>";
-            d.jobs.forEach(j => {
-                html += `<div style='display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-glass);font-size:13px;'><span style='font-weight:600;'>${j.name}</span><span style='color:var(--text-muted);font-size:12px;'>${j.next_run}</span></div>`;
-            });
-            document.getElementById("schedStatus").innerHTML = html;
-        } else {
-            document.getElementById("schedStatus").innerHTML = "<span style='color:var(--amber);font-weight:600;'>⚠️ Scheduler not running (serverless mode)</span>";
-        }
-    } catch(e) { document.getElementById("schedStatus").innerHTML = "<span style='color:var(--text-muted);'>Could not fetch status</span>"; }
-}
-
-/* ═══════════════════════════════════════════════════════
-   SAVE PROFILE
-   ═══════════════════════════════════════════════════════ */
-async function saveProfile() {
-    const e = document.getElementById("iEmail").value.trim();
-    const q = document.getElementById("iQual").value.trim();
-    if (!e || !q) { toast("Email and Qualification required", "err"); return; }
-    if (!selInt.length) { toast("Select at least one interest", "err"); return; }
-    const btn = document.getElementById("btnSave");
-    btn.innerHTML = '<span class="spin"></span> Saving...'; btn.disabled = true;
-    try {
-        const r = await fetch("/api/profile", { method: "POST", headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({ email:e, qualification:q, interests:selInt, experience_level:selExp })
-        });
-        if (r.ok) { toast("Profile saved successfully! ✅", "ok"); loadStats(); }
-        else {
-            const ct = r.headers.get("content-type");
-            if (ct && ct.includes("application/json")) { const d = await r.json(); toast(d.error || "Save failed", "err"); }
-            else toast("Save failed (Server error)", "err");
-        }
-    } catch(x) { toast("Network error", "err"); }
-    btn.innerHTML = "💾 Save Profile"; btn.disabled = false;
-}
-
-/* ═══════════════════════════════════════════════════════
-   TOGGLE STATUS
-   ═══════════════════════════════════════════════════════ */
-async function toggleStatus() {
-    const ns = curSt === "active" ? "paused" : "active";
-    try {
-        const r = await fetch("/api/status", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({status:ns}) });
-        if (r.ok) { curSt = ns; updatePill(); toast(ns === "active" ? "Notifications resumed! 🔔" : "Notifications paused ⏸️", "ok"); }
-        else toast("Failed to update status", "err");
-    } catch(e) { toast("Failed to update", "err"); }
-}
-function updatePill() {
-    const p = document.getElementById("pill"), t = document.getElementById("pillTxt");
-    const ti = document.getElementById("actToggleIcon"), tt = document.getElementById("actToggle");
-    if (curSt === "active") { p.className = "status-pill active"; t.textContent = "Active"; if(ti)ti.textContent="⏸️"; if(tt)tt.textContent="Pause Notifications"; }
-    else { p.className = "status-pill paused"; t.textContent = "Paused"; if(ti)ti.textContent="▶️"; if(tt)tt.textContent="Resume Notifications"; }
-}
-
-/* ═══════════════════════════════════════════════════════
-   TEST EMAIL
-   ═══════════════════════════════════════════════════════ */
-async function testEmail(card) {
-    const t = document.getElementById("actTest");
-    const orig = t.innerHTML;
-    const e = document.getElementById("iEmail").value.trim();
-    if (!e) { toast("Please enter an email in the Profile section first", "err"); return; }
-    t.innerHTML = '<span class="spin"></span> Sending...';
-    try {
-        const r = await fetch("/api/test-email?email=" + encodeURIComponent(e));
-        if (r.ok) { const d = await safeJson(r); toast(`Test email sent to ${d.email||''}! Check your inbox 📧`, "ok"); }
-        else {
-            const ct = r.headers.get("content-type");
-            if (ct && ct.includes("application/json")) {
-                const d = await r.json(); const err = d.error || "Email failed";
-                if (err.includes('IP_BLOCKED')) toast('❌ IP blocked by Brevo. Disable IP restriction.', 'err');
-                else if (err.includes('INVALID_API_KEY')) toast('❌ Brevo API key is invalid.', 'err');
-                else if (err.includes('SENDER_NOT_VERIFIED')) toast('❌ Sender email not verified in Brevo.', 'err');
-                else if (err.includes('RATE_LIMITED')) toast('❌ Daily email limit reached. Try tomorrow.', 'err');
-                else toast(err, 'err');
-            } else toast("Server error sending email", "err");
-        }
-    } catch(e) { toast("Network error", "err"); }
-    t.innerHTML = orig;
-}
-
-/* ═══════════════════════════════════════════════════════
-   VERIFY BREVO
-   ═══════════════════════════════════════════════════════ */
-async function verifyBrevo() {
-    const el = document.getElementById('brevoStatus');
-    el.innerHTML = '<span class="spin"></span> Checking Brevo connection...';
-    try {
-        const r = await fetch('/api/verify-brevo'); const d = await r.json();
-        if (d.status === 'ok') {
-            el.innerHTML = `<div style='color:var(--green);font-weight:700;margin-bottom:8px;font-family:var(--font-heading);'>✅ Connected</div>`
-                + `<div style='display:grid;gap:6px;font-size:13px;'>`
-                + `<div>📧 Account: <strong>${d.account}</strong></div>`
-                + `<div>📋 Plan: <strong>${d.plan}</strong> (${d.credits} emails/day)</div>`
-                + `<div>✅ Sender: <strong>${d.sender_email}</strong> (verified)</div>`
-                + `</div>`;
-        } else {
-            const err = d.error || 'Unknown error'; let hint = '';
-            if (err.includes('IP')) hint = '<br><a href="https://app.brevo.com/security/authorised_ips" target="_blank" style="color:var(--primary);">Fix: Disable IP restriction →</a>';
-            else if (err.includes('API KEY')) hint = '<br>Fix: Generate new API key at Brevo dashboard';
-            else if (err.includes('SENDER')) hint = '<br><a href="https://app.brevo.com/senders/list" target="_blank" style="color:var(--primary);">Fix: Verify sender email →</a>';
-            el.innerHTML = `<div style='color:var(--red);font-weight:700;margin-bottom:8px;'>❌ Error</div><div style='font-size:13px;color:var(--text-muted);word-break:break-word;'>${err}${hint}</div>`;
-        }
-    } catch(e) { el.innerHTML = '<span style="color:var(--red);">❌ Could not reach server</span>'; }
-}
-
-/* ═══════════════════════════════════════════════════════
-   TRIGGER DIGEST
-   ═══════════════════════════════════════════════════════ */
-async function triggerDigest(card) {
-    const t = document.getElementById("actDigest"); const orig = t.innerHTML;
-    t.innerHTML = '<span class="spin"></span> Sending...';
-    try {
-        const r = await fetch("/api/trigger-digest");
-        if (r.ok) {
-            const d = await safeJson(r);
-            if (d.status === "skipped") toast(d.message || "No pending jobs to digest", "ok");
-            else toast(`Digest sent! ${d.jobs||0} jobs emailed to ${d.email||''} 📧`, "ok");
-            loadHistory(); loadStats();
-        } else {
-            const ct = r.headers.get("content-type");
-            if (ct && ct.includes("application/json")) { const d = await r.json(); toast(d.error||"Failed","err"); }
-            else toast("Server error generating digest", "err");
-        }
-    } catch(e) { toast("Network error", "err"); }
-    t.innerHTML = orig;
-}
-
-/* ═══════════════════════════════════════════════════════
-   SEND REPORT (Header Button)
-   ═══════════════════════════════════════════════════════ */
-async function sendReport(btn) {
-    btn.disabled = true; const origHTML = btn.innerHTML;
-    btn.innerHTML = '<span class="spin"></span> <span class="btn-label">Sending...</span>';
-    try {
-        const r = await fetch("/api/trigger-digest");
-        if (r.ok) {
-            const d = await safeJson(r);
-            if (d.status === "skipped") {
-                toast(d.message || "No pending jobs — digest queue is empty", "ok");
-                btn.innerHTML = '✅ <span class="btn-label">No Pending Jobs</span>';
-            } else {
-                toast(`PDF Report sent! ${d.jobs||0} jobs emailed to ${d.email||''} 📧`, "ok");
-                btn.innerHTML = '✅ <span class="btn-label">Report Sent!</span>';
-            }
-            loadStats(); loadHistory();
-        } else {
-            const ct = r.headers.get("content-type");
-            if (ct && ct.includes("application/json")) { const d = await r.json(); toast(d.error||"Send failed","err"); }
-            else toast("Server error sending report", "err");
-            btn.innerHTML = '❌ <span class="btn-label">Failed</span>';
-        }
-    } catch(e) { toast("Network error","err"); btn.innerHTML = '❌ <span class="btn-label">Error</span>'; }
-    setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 3000);
-}
-
-/* ═══════════════════════════════════════════════════════
-   TRIGGER SCRAPE
-   ═══════════════════════════════════════════════════════ */
-async function triggerScrape(card) {
-    const t = document.getElementById("actScrape"); const orig = t.innerHTML;
-    t.innerHTML = '<span class="spin"></span> Scraping...';
-    try {
-        const r = await fetch("/api/trigger-scrape");
-        if (r.ok) { toast("Scraper triggered! Running in background...", "ok"); loadStats(); }
-        else if (r.status === 429) { const d = await safeJson(r); toast(d.error||"Already running","err"); }
-        else { toast("Error triggering scraper", "err"); }
-    } catch(e) { toast("Network error", "err"); }
-    setTimeout(() => { t.innerHTML = orig; }, 2000);
-}
-
-/* ═══════════════════════════════════════════════════════
-   RESUME UPLOAD
-   ═══════════════════════════════════════════════════════ */
-async function uploadResume(ev) {
-    let files;
-    if (ev.target && ev.target.files) files = ev.target.files;
-    else if (ev.dataTransfer && ev.dataTransfer.files) files = ev.dataTransfer.files;
-    const f = files ? files[0] : null;
-    if (!f) return;
-    if (f.size > 5*1024*1024) { toast("File too large (max 5MB)", "err"); return; }
-    const s = document.getElementById("upStatus");
-    s.style.display = "block";
-    s.innerHTML = '<span class="spin"></span> Uploading & analyzing...';
-    const fd = new FormData(); fd.append("file", f);
-    try {
-        const r = await fetch("/api/resume", { method: "POST", body: fd });
-        if (r.ok) {
-            s.innerHTML = "<span style='color:var(--green);font-weight:600;'>✅ Resume uploaded & analyzed!</span>";
-            toast("Resume uploaded! Profile updated.", "ok");
+        document.addEventListener("DOMContentLoaded", () => {
+            initTheme();
+            renderRankedList();
+            renderSectorPool();
             loadProfile();
-        } else {
-            const ct = r.headers.get("content-type");
-            if (ct && ct.includes("application/json")) { const d = await r.json(); s.innerHTML = `<span style='color:var(--red);'>❌ ${d.error||'Failed'}</span>`; }
-            else s.innerHTML = `<span style='color:var(--red);'>❌ Server error</span>`;
+            loadStats();
+            loadIntelligenceJobs();
+        });
+
+        function initTheme() {
+            const saved = localStorage.getItem("theme") || "dark";
+            document.documentElement.setAttribute("data-theme", saved);
+            document.getElementById("themeIcon").textContent = saved === "dark" ? "☀️" : "🌙";
         }
-    } catch(e) { s.innerHTML = "<span style='color:var(--red);'>❌ Network error</span>"; }
-}
+        function toggleTheme() {
+            const cur = document.documentElement.getAttribute("data-theme");
+            const next = cur === "dark" ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", next);
+            localStorage.setItem("theme", next);
+            document.getElementById("themeIcon").textContent = next === "dark" ? "☀️" : "🌙";
+        }
 
-// Drag & Drop
-const z = document.getElementById("upZone");
-if (z) {
-    z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("over"); });
-    z.addEventListener("dragleave", () => z.classList.remove("over"));
-    z.addEventListener("drop", e => {
-        e.preventDefault(); z.classList.remove("over");
-        if (e.dataTransfer && e.dataTransfer.files) uploadResume(e);
-    });
-}
+        function switchTab(tabId, btn) {
+            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+            btn.classList.add("active");
+            document.getElementById("panel-" + tabId).classList.add("active");
+            if (tabId === "history") loadHistory();
+            if (tabId === "diagnostics") diagnosePipeline();
+            if (tabId === "intelligence") loadIntelligenceJobs();
+        }
 
-/* ═══════════════════════════════════════════════════════
-   TOAST
-   ═══════════════════════════════════════════════════════ */
-function toast(m, t) {
-    const old = document.querySelector(".toast"); if (old) old.remove();
-    const d = document.createElement("div");
-    d.className = `toast toast-${t==='ok'?'ok':'err'}`;
-    d.textContent = m;
-    document.body.appendChild(d);
-    setTimeout(() => d.remove(), 4000);
-}
-</script>
+        /* ═══════════════════════════════════════════════
+           AI JOB INTELLIGENCE & REALITY LOGIC
+           ═══════════════════════════════════════════════ */
+        async function loadIntelligenceJobs() {
+            try {
+                const res = await fetch("/api/intelligence/jobs");
+                if (res.ok) {
+                    const data = await res.json();
+                    cachedIntelJobs = data.jobs || [];
+                    renderIntelligenceCards(cachedIntelJobs);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function runJobIntelligence() {
+            const loading = document.getElementById("intelLoading");
+            const stepLabel = document.getElementById("intelLoadingStep");
+            loading.style.display = "block";
+
+            const steps = [
+                "Step 1/4: Analyzing structured job requirements with Groq Agent #1...",
+                "Step 2/4: Calculating 6-factor deterministic profile match scores...",
+                "Step 3/4: Investigating public employee discussions & workplace signals with Groq Agent #2...",
+                "Step 4/4: Formulating evidence claims, confidence ratings, and final recommendations..."
+            ];
+            let stepIdx = 0;
+            const timer = setInterval(() => {
+                stepIdx = (stepIdx + 1) % steps.length;
+                stepLabel.textContent = steps[stepIdx];
+            }, 1200);
+
+            try {
+                const res = await fetch("/api/intelligence/run", { method: "POST" });
+                clearInterval(timer);
+                loading.style.display = "none";
+
+                if (res.ok) {
+                    const data = await res.json();
+                    cachedIntelJobs = data.jobs || [];
+                    renderIntelligenceCards(cachedIntelJobs);
+                    showToast(`✅ Analyzed ${cachedIntelJobs.length} active jobs with Reality Check!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || "Intelligence run failed", "error");
+                }
+            } catch (e) {
+                clearInterval(timer);
+                loading.style.display = "none";
+                showToast("Intelligence request failed", "error");
+            }
+        }
+
+        function renderIntelligenceCards(jobs) {
+            const grid = document.getElementById("intelGrid");
+            if (!jobs.length) {
+                grid.innerHTML = `
+                    <div class="glass" style="grid-column: 1 / -1; padding: 40px; text-align: center;">
+                        <div style="font-size: 36px; margin-bottom: 8px;">🧠</div>
+                        <div style="font-size: 16px; font-weight: 700; color: var(--text-main);">No active analyzed jobs yet</div>
+                        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px; margin-bottom: 16px;">Click the button below to run Groq Dual Agent Intelligence on active openings.</div>
+                        <button class="btn btn-cyan" onclick="runJobIntelligence()">⚡ Run Job Intelligence Now</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = jobs.map((j, idx) => {
+                const matchScore = j.match.match_score || 85;
+                const realityScore = j.reality.reality_score || 75;
+                const rec = j.overall_recommendation || "APPLY";
+                const isStrong = rec.includes("STRONG");
+                const badgeRecClass = isStrong ? "score-reality" : "score-match";
+
+                return `
+                    <div class="glass intel-card">
+                        <div>
+                            <div class="intel-card-head">
+                                <div>
+                                    <div style="font-size:16px; font-weight:800; font-family:var(--font-heading); color:var(--text-main); line-height:1.3;">
+                                        ${idx + 1}. ${escapeHtml(j.title)}
+                                    </div>
+                                    <div style="font-size:13px; color:var(--cyan); font-weight:600; margin-top:2px;">
+                                        🏛️ ${escapeHtml(j.company)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="score-pill-row" style="margin-top:12px;">
+                                <span class="score-badge score-match">🎯 ${matchScore}% Match</span>
+                                <span class="score-badge score-reality">🏛️ Reality: ${realityScore}/100</span>
+                                <span class="score-badge score-rec">${rec}</span>
+                            </div>
+
+                            <div style="margin-top:14px;">
+                                <div class="bar-label"><span>Skill & Qualification Fit</span><span>${j.match.category_scores.skill_match}%</span></div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:${j.match.category_scores.skill_match}%;"></div></div>
+                            </div>
+
+                            <div style="font-size:12px; color:var(--text-secondary); margin-top:10px; line-height:1.5;">
+                                <strong>💡 Workplace Signal:</strong> ${j.reality.positive_signals && j.reality.positive_signals[0] ? escapeHtml(j.reality.positive_signals[0]) : 'Strong job security & central benefits.'}
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:8px; margin-top:10px;">
+                            <button class="btn btn-primary" style="flex:1; padding:8px 14px; font-size:12px;" onclick="openJobDetailModal('${j.job_id}')">🔍 Deep Intelligence</button>
+                            <button class="btn btn-outline" style="padding:8px 12px; font-size:12px;" onclick="refreshJobReality('${j.job_id}')" title="Refresh Reality Research">🔄</button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        async function openJobDetailModal(jobId) {
+            const job = cachedIntelJobs.find(j => j.job_id === jobId);
+            if (!job) return;
+
+            const modal = document.getElementById("intelModal");
+            const body = document.getElementById("modalBody");
+
+            const cats = job.match.category_scores;
+            const real = job.reality;
+
+            body.innerHTML = `
+                <div style="margin-bottom:20px;">
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+                        <span class="score-badge score-match">🎯 ${job.match.match_score}% Profile Match</span>
+                        <span class="score-badge score-reality">🏛️ Reality Score: ${real.reality_score}/100</span>
+                        <span class="score-badge score-rec">⭐ ${job.overall_recommendation}</span>
+                        <span style="font-size:11px; color:var(--text-muted);">Confidence: <strong>${real.confidence}</strong></span>
+                    </div>
+                    <h2 style="font-size:22px; font-weight:900; font-family:var(--font-heading); color:var(--text-main);">${escapeHtml(job.title)}</h2>
+                    <div style="font-size:14px; color:var(--cyan); font-weight:700;">🏛️ ${escapeHtml(job.company)} &bull; 📍 ${escapeHtml(job.location || 'India')}</div>
+                </div>
+
+                <!-- Category Scores -->
+                <div style="background:var(--bg-surface); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-glass); margin-bottom:16px;">
+                    <div style="font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:10px;">📊 6-Factor Deterministic Match Breakdown</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div>
+                            <div class="bar-label"><span>Skill & Degree (35%)</span><span>${cats.skill_match}%</span></div>
+                            <div class="bar-bg"><div class="bar-fill" style="width:${cats.skill_match}%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="bar-label"><span>Experience (20%)</span><span>${cats.experience_match}%</span></div>
+                            <div class="bar-bg"><div class="bar-fill" style="width:${cats.experience_match}%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="bar-label"><span>Sector Priority (20%)</span><span>${cats.role_match}%</span></div>
+                            <div class="bar-bg"><div class="bar-fill" style="width:${cats.role_match}%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="bar-label"><span>Compensation (10%)</span><span>${cats.salary_match}%</span></div>
+                            <div class="bar-bg"><div class="bar-fill" style="width:${cats.salary_match}%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workplace Reality -->
+                <div style="background:var(--bg-surface); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-glass); margin-bottom:16px;">
+                    <div style="font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:10px;">🏛️ Employee Reality Check (/5.0 Scale)</div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; text-align:center;">
+                        <div style="padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                            <div style="font-size:18px; font-weight:900; color:var(--cyan);">${real.employee_sentiment}/5</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Employee Sentiment</div>
+                        </div>
+                        <div style="padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                            <div style="font-size:18px; font-weight:900; color:var(--green);">${real.work_life_balance}/5</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Work-Life Balance</div>
+                        </div>
+                        <div style="padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                            <div style="font-size:18px; font-weight:900; color:var(--primary);">${real.learning_growth}/5</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Learning / Growth</div>
+                        </div>
+                        <div style="padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                            <div style="font-size:18px; font-weight:900; color:var(--amber);">${real.interview_difficulty}/5</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Interview Difficulty</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signals & Concerns -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                    <div style="padding:14px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:var(--radius-sm);">
+                        <div style="font-weight:700; color:var(--green); font-size:12px; margin-bottom:6px;">✅ Verified Positive Signals</div>
+                        <ul style="font-size:12px; color:var(--text-secondary); padding-left:16px; line-height:1.5;">
+                            ${(real.positive_signals || []).map(p => `<li>${escapeHtml(p)}</li>`).join("")}
+                        </ul>
+                    </div>
+                    <div style="padding:14px; background:rgba(244,63,94,0.06); border:1px solid rgba(244,63,94,0.2); border-radius:var(--radius-sm);">
+                        <div style="font-weight:700; color:var(--red); font-size:12px; margin-bottom:6px;">⚠️ Potential Concerns & Workload</div>
+                        <ul style="font-size:12px; color:var(--text-secondary); padding-left:16px; line-height:1.5;">
+                            ${(real.potential_concerns || []).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Interview Intel -->
+                ${real.interview ? `
+                <div style="background:var(--bg-surface); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-glass); margin-bottom:16px;">
+                    <div style="font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:6px;">📝 Interview & Exam Intelligence</div>
+                    <div style="font-size:12px; color:var(--text-secondary); line-height:1.6;">
+                        <strong>Selection Process:</strong> ${escapeHtml(real.interview.rounds_count || 'Written Exam + Interview')}<br/>
+                        <strong>Key Preparation Topics:</strong> ${(real.interview.common_topics || []).join(", ") || 'General Aptitude, Technical domain'}<br/>
+                        ${real.interview.candidate_tips ? `<strong>Candidate Tip:</strong> <i>${escapeHtml(real.interview.candidate_tips)}</i>` : ''}
+                    </div>
+                </div>` : ''}
+
+                <!-- Action Links -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:20px;">
+                    <div>
+                        ${job.apply_link ? `<a href="${job.apply_link}" target="_blank" class="btn btn-primary" style="padding:10px 18px;">✍️ Apply Online</a>` : ''}
+                        ${job.notification_link ? `<a href="${job.notification_link}" target="_blank" class="btn btn-outline" style="padding:10px 18px; margin-left:8px;">📄 Official Notice</a>` : ''}
+                    </div>
+                    <button class="btn btn-cyan" onclick="refreshJobReality('${job.job_id}')">🔄 Refresh Reality Check</button>
+                </div>
+            `;
+
+            modal.classList.add("active");
+        }
+
+        function closeModal() {
+            document.getElementById("intelModal").classList.remove("active");
+        }
+
+        async function refreshJobReality(jobId) {
+            showToast("Re-running Groq Agent #2 reality research...", "success");
+            try {
+                const res = await fetch(`/api/intelligence/job/${jobId}/refresh`, { method: "POST" });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast("Reality check updated! ✅", "success");
+                    loadIntelligenceJobs();
+                    if (document.getElementById("intelModal").classList.contains("active")) {
+                        openJobDetailModal(jobId);
+                    }
+                } else {
+                    showToast("Refresh failed", "error");
+                }
+            } catch (e) { showToast("Network error", "error"); }
+        }
+
+        /* ═══════════════════════════════════════════════
+           PROFILE & RANKED SECTOR LOGIC
+           ═══════════════════════════════════════════════ */
+        function renderRankedList() {
+            const container = document.getElementById("rankedList");
+            if (!rankedSectors.length) {
+                container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; padding:10px;">No sector preferences selected yet. Click sectors below to rank them!</div>';
+                return;
+            }
+            container.innerHTML = rankedSectors.map((s, idx) => `
+                <div class="ranked-item">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="rank-num">#${idx + 1}</div>
+                        <div style="font-size:14px; font-weight:600; color:var(--text-main);">${getSectorEmoji(s)} ${s}</div>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        ${idx > 0 ? `<button class="btn-arrow" onclick="moveRank(${idx}, -1)">▲</button>` : ''}
+                        ${idx < rankedSectors.length - 1 ? `<button class="btn-arrow" onclick="moveRank(${idx}, 1)">▼</button>` : ''}
+                        <button class="btn-arrow" onclick="removeRank('${s}')" style="color:var(--red);">✕</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function renderSectorPool() {
+            const container = document.getElementById("sectorPool");
+            const available = ALL_SECTORS.filter(s => !rankedSectors.includes(s));
+            container.innerHTML = available.map(s => `
+                <div class="chip" onclick="addRank('${s}')">+ ${getSectorEmoji(s)} ${s}</div>
+            `).join("");
+        }
+
+        function getSectorEmoji(s) {
+            const map = { "Defence": "🎖️", "PSU": "🏭", "Railways": "🚂", "Banking": "🏦", "IT/Software": "💻", "UPSC": "🏛️", "SSC": "📊", "State Govt": "🏘️", "Teaching": "📚", "Judiciary": "⚖️", "Medical": "🏥" };
+            return map[s] || "💼";
+        }
+
+        function moveRank(idx, dir) {
+            const target = idx + dir;
+            if (target < 0 || target >= rankedSectors.length) return;
+            const temp = rankedSectors[idx];
+            rankedSectors[idx] = rankedSectors[target];
+            rankedSectors[target] = temp;
+            renderRankedList(); renderSectorPool();
+        }
+
+        function addRank(s) {
+            if (!rankedSectors.includes(s)) {
+                rankedSectors.push(s);
+                renderRankedList(); renderSectorPool();
+            }
+        }
+
+        function removeRank(s) {
+            rankedSectors = rankedSectors.filter(x => x !== s);
+            renderRankedList(); renderSectorPool();
+        }
+
+        function setExp(exp, el) {
+            userExp = exp;
+            document.querySelectorAll("#expButtons .chip").forEach(c => c.classList.remove("selected"));
+            el.classList.add("selected");
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await fetch("/api/profile");
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById("inputEmail").value = data.email || "";
+                    document.getElementById("inputQual").value = data.qualification || "";
+                    if (data.interests && Array.isArray(data.interests) && data.interests.length) {
+                        rankedSectors = data.interests;
+                        renderRankedList(); renderSectorPool();
+                    }
+                    if (data.experience_level) {
+                        userExp = data.experience_level;
+                        document.querySelectorAll("#expButtons .chip").forEach(c => {
+                            if (c.textContent.includes(userExp)) c.classList.add("selected");
+                            else c.classList.remove("selected");
+                        });
+                    }
+                    userStatus = data.status || "active";
+                    updateStatusUI();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function saveProfile() {
+            const email = document.getElementById("inputEmail").value.trim();
+            const qual = document.getElementById("inputQual").value.trim();
+            if (!email || !qual) {
+                showToast("Email and Qualification are required", "error");
+                return;
+            }
+            try {
+                const res = await fetch("/api/profile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email, qualification: qual, interests: rankedSectors, experience_level: userExp })
+                });
+                if (res.ok) {
+                    showToast("Profile & ranked preferences saved! ✅", "success");
+                    loadIntelligenceJobs();
+                } else {
+                    showToast("Failed to save profile", "error");
+                }
+            } catch (e) { showToast("Network error saving profile", "error"); }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch("/api/stats");
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById("statPending").textContent = data.pending_today || 0;
+                    document.getElementById("statTotal").textContent = data.total_jobs || 0;
+                    document.getElementById("statSent").textContent = data.digests_sent || 0;
+                }
+            } catch (e) {}
+        }
+
+        /* ── Triggers ── */
+        async function triggerScrape() {
+            showToast("Starting live scrape across 4 government portals...", "success");
+            try {
+                const res = await fetch("/api/trigger-scrape");
+                showToast("Scraper running in background with Groq AI 🚀", "success");
+                setTimeout(loadStats, 3000);
+            } catch (e) { showToast("Scraper launch failed", "error"); }
+        }
+
+        async function triggerDigest() {
+            showToast("Generating executive PDF digest...", "success");
+            try {
+                const res = await fetch("/api/trigger-digest");
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`✅ Digest sent (${data.jobs} jobs) to ${data.email}`, "success");
+                    loadStats();
+                } else { showToast(data.error || "Failed to send digest", "error"); }
+            } catch (e) { showToast("Digest trigger failed", "error"); }
+        }
+
+        async function testEmail() {
+            showToast("Sending test email via Brevo...", "success");
+            try {
+                const res = await fetch("/api/test-email");
+                const data = await res.json();
+                if (res.ok) { showToast(`✅ Test email sent to ${data.email}!`, "success"); }
+                else { showToast(data.error || "Brevo email failed", "error"); }
+            } catch (e) { showToast("Email test failed", "error"); }
+        }
+
+        async function toggleStatus() {
+            const nextStatus = userStatus === "active" ? "paused" : "active";
+            try {
+                const res = await fetch("/api/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: nextStatus })
+                });
+                if (res.ok) {
+                    userStatus = nextStatus;
+                    updateStatusUI();
+                    showToast(`Monitoring status: ${userStatus.toUpperCase()}`, "success");
+                }
+            } catch (e) { showToast("Failed to toggle status", "error"); }
+        }
+
+        function updateStatusUI() {
+            const pill = document.getElementById("activeStatusPill");
+            const tTitle = document.getElementById("toggleTitle");
+            const tIcon = document.getElementById("toggleIcon");
+            if (userStatus === "active") {
+                pill.textContent = "🟢 Active 24/7";
+                pill.style.color = "var(--green)";
+                tTitle.textContent = "Pause Alerts";
+                tIcon.textContent = "⏸️";
+            } else {
+                pill.textContent = "⏸️ Paused";
+                pill.style.color = "var(--amber)";
+                tTitle.textContent = "Resume Alerts";
+                tIcon.textContent = "▶️";
+            }
+        }
+
+        async function uploadResume(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showToast("Uploading & parsing resume with Groq AI...", "success");
+            const formData = new FormData();
+            formData.append("file", file);
+            try {
+                const res = await fetch("/api/resume", { method: "POST", body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast("Resume parsed & profile updated! 🎯", "success");
+                    document.getElementById("resumeResultBox").style.display = "block";
+                    document.getElementById("resumeResultText").innerHTML = `
+                        <strong>Qualification:</strong> ${data.parsed.qualification || 'Extracted'}<br>
+                        <strong>Specialization:</strong> ${data.parsed.degree || 'General'}<br>
+                        <strong>Skills:</strong> ${(data.parsed.skills || []).join(', ') || 'N/A'}<br>
+                        <strong>Suggested Sectors:</strong> ${(data.parsed.preferred_sectors || []).join(', ') || 'N/A'}
+                    `;
+                    loadProfile();
+                } else { showToast(data.error || "Resume upload failed", "error"); }
+            } catch (e) { showToast("Upload failed", "error"); }
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch("/api/digest-history");
+                const data = await res.json();
+                const container = document.getElementById("historyList");
+                if (!data.length) {
+                    container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:30px;">No digests recorded yet.</p>';
+                    return;
+                }
+                container.innerHTML = data.map(h => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--bg-surface); border:1px solid var(--border-glass); border-radius:var(--radius-sm); margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:700; color:var(--text-main);">📧 ${h.date}</div>
+                            <div style="font-size:12px; color:var(--text-muted);">${h.job_count} jobs &bull; Type: ${h.type}</div>
+                        </div>
+                        <span style="font-size:12px; font-weight:700; color:${h.sent ? 'var(--green)' : 'var(--amber)'};">${h.sent ? '✅ Delivered' : '⏳ Pending'}</span>
+                    </div>
+                `).join("");
+            } catch (e) {}
+        }
+
+        async function diagnosePipeline() {
+            const out = document.getElementById("diagOutput");
+            out.textContent = "Testing pipeline connections: Groq Dual Agents, Supabase DB, Scheduler, Profile...";
+            try {
+                const res = await fetch("/api/debug");
+                const data = await res.json();
+                out.textContent = JSON.stringify(data, null, 2);
+            } catch (e) { out.textContent = "Diagnostic error: " + e.message; }
+        }
+
+        function showToast(msg, type = "success") {
+            const wrap = document.getElementById("toastWrap");
+            const toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.textContent = msg;
+            wrap.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
 </body>
 </html>
 '''

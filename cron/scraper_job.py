@@ -154,8 +154,8 @@ def run_scraper_job():
     if total_new == 0 and total_extraction_failures > 0 and total_skipped_dedup == 0:
         logger.critical(
             "❌ CRITICAL: Scraper ran but extracted ZERO jobs with extraction failures. "
-            "Likely cause: invalid GEMINI_MODEL, expired GEMINI_API_KEY, or API quota exceeded. "
-            "Check GEMINI_MODEL env var — recommended: gemini-3.6-flash"
+            "Likely cause: invalid GROQ_MODEL, invalid GROQ_API_KEY, or API rate limit. "
+            "Check GROQ_MODEL env var — recommended: openai/gpt-oss-120b"
         )
         try:
             from app.brevo_mailer import BrevoMailer
@@ -165,10 +165,10 @@ def run_scraper_job():
                 body=(
                     f"<h2>⚠️ Scraper Alert</h2>"
                     f"<p>The scraper ran but extracted <b>0 jobs</b> with <b>{total_extraction_failures} extraction failures</b>.</p>"
-                    f"<p><b>Most likely cause:</b> Invalid Gemini model name or expired API key.</p>"
+                    f"<p><b>Most likely cause:</b> Invalid Groq model name, invalid API key, or rate limit.</p>"
                     f"<ul>"
-                    f"<li>Check <code>GEMINI_MODEL</code> env var — must be <code>gemini-3.6-flash</code></li>"
-                    f"<li>Check <code>GEMINI_API_KEY</code> is valid and not expired</li>"
+                    f"<li>Check <code>GROQ_MODEL</code> env var — recommended: <code>openai/gpt-oss-120b</code></li>"
+                    f"<li>Check <code>GROQ_API_KEY</code> is valid and active</li>"
                     f"<li>Visit <code>/api/debug</code> for full pipeline diagnostics</li>"
                     f"</ul>"
                     f"<p style='color:#666;font-size:11px;'>— JobScout-AI Auto-Alert</p>"

@@ -8,6 +8,7 @@ Serves the interactive web dashboard and provides REST API endpoints for:
 """
 import logging
 import os
+import time
 import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -175,7 +176,7 @@ async def update_status(request: Request):
 
 @app.post("/api/resume")
 async def upload_resume(file: UploadFile = File(...)):
-    """Upload resume, parse with Gemini, update profile."""
+    """Upload resume, parse with Groq AI, update profile."""
     try:
         if file.size and file.size > 5 * 1024 * 1024:
             return JSONResponse(content={"error": "File too large (max 5MB)"}, status_code=400)
@@ -195,11 +196,9 @@ async def upload_resume(file: UploadFile = File(...)):
         if filename.lower().endswith(".txt"):
             resume_text = content.decode("utf-8", errors="ignore")[:10000]
         else:
-            # For PDF/DOC: store as-is, Gemini can't read binary
-            # We'll use the filename and any metadata
             resume_text = f"Resume uploaded: {filename} ({len(content)} bytes)"
 
-        # Parse with Gemini if we have text
+        # Parse with Groq AI if we have text
         parsed = {}
         if resume_text and len(resume_text) > 50:
             try:
@@ -207,7 +206,7 @@ async def upload_resume(file: UploadFile = File(...)):
                 extractor = JobExtractor()
                 parsed = extractor.parse_resume(resume_text)
             except Exception as e:
-                logger.warning(f"Resume parsing with Gemini failed: {e}")
+                logger.warning(f"Resume parsing with Groq failed: {e}")
 
         # Update profile with resume data
         updates = {"resume_url": resume_url}
@@ -217,12 +216,14 @@ async def upload_resume(file: UploadFile = File(...)):
             updates["qualification"] = parsed["qualification"]
         if parsed.get("experience_level"):
             updates["experience_level"] = parsed["experience_level"]
+        if parsed.get("preferred_sectors") and isinstance(parsed["preferred_sectors"], list):
+            updates["interests"] = parsed["preferred_sectors"]
 
         db.update_profile(settings.user_email, updates)
 
         return JSONResponse(content={
             "status": "ok",
-            "message": "Resume uploaded and analyzed",
+            "message": "Resume uploaded and analyzed with Groq AI",
             "parsed": parsed,
             "url": resume_url,
         })
@@ -331,6 +332,12 @@ async def trigger_digest():
             logger.info("No jobs found anywhere for report")
             return {"status": "skipped", "message": "No jobs found. Run a scrape first to populate the database.", "jobs": 0, "email": user_email}
 
+        # Calculate match scores for all included jobs
+        matcher = JobMatcher()
+        for j in jobs:
+            if not j.match_score:
+                j.match_score = matcher.compute_match_percentage(profile, j)
+
         # Generate PDF
         pdf_gen = PDFGenerator()
         pdf_bytes = pdf_gen.generate(jobs)
@@ -399,7 +406,6 @@ async def test_email(email: Optional[str] = None):
         if success:
             return {"status": "sent", "email": user_email, "message": "Test email sent! Check your inbox."}
         else:
-            # Return specific error from mailer
             error_detail = mailer.last_error or "Email send failed. Check Brevo API key and sender verification."
             return JSONResponse(content={"error": error_detail}, status_code=500)
 
@@ -460,7 +466,7 @@ async def debug_pipeline():
     """Full pipeline diagnostic — checks every component end-to-end.
 
     Tests:
-    1. Gemini API key + model validity
+    1. Groq LPU API key + model inference + latency
     2. Supabase connection + table counts
     3. Scheduler status
     4. Last 15 days job count
@@ -470,7 +476,7 @@ async def debug_pipeline():
     """
     result = {
         "timestamp": datetime.now().isoformat(),
-        "gemini": {"ok": False, "model": None, "error": None},
+        "groq": {"ok": False, "model": None, "latency_ms": None, "error": None},
         "supabase": {"ok": False, "jobs_total": 0, "jobs_15d": 0, "digest_pending": 0, "error": None},
         "scheduler": {"running": False, "jobs": []},
         "profile": {"found": False, "email": None, "status": None},
@@ -479,22 +485,28 @@ async def debug_pipeline():
 
     settings = get_settings()
 
-    # ── 1. Gemini check ──
+    # ── 1. Groq LPU check ──
     try:
-        from google import genai as genai_client
-        from google.genai import types as genai_types
-        client = genai_client.Client(api_key=settings.gemini_api_key)
-        test_resp = client.models.generate_content(
-            model=settings.gemini_model,
-            contents="Reply with exactly: OK",
-            config=genai_types.GenerateContentConfig(max_output_tokens=5, temperature=0)
+        from groq import Groq
+        t0 = time.time()
+        client = Groq(api_key=settings.groq_api_key)
+        test_resp = client.chat.completions.create(
+            model=settings.groq_model,
+            messages=[
+                {"role": "system", "content": "Respond with OK"},
+                {"role": "user", "content": "Health check"}
+            ],
+            max_tokens=10,
+            temperature=0
         )
-        result["gemini"]["ok"] = True
-        result["gemini"]["model"] = settings.gemini_model
-        result["gemini"]["response"] = test_resp.text.strip()
+        latency = int((time.time() - t0) * 1000)
+        result["groq"]["ok"] = True
+        result["groq"]["model"] = settings.groq_model
+        result["groq"]["latency_ms"] = latency
+        result["groq"]["response"] = (test_resp.choices[0].message.content or "").strip()
     except Exception as e:
-        result["gemini"]["error"] = str(e)
-        result["gemini"]["model"] = settings.gemini_model
+        result["groq"]["error"] = str(e)
+        result["groq"]["model"] = settings.groq_model
 
     # ── 2. Supabase + job counts ──
     try:
@@ -536,21 +548,218 @@ async def debug_pipeline():
 
     # ── Overall verdict ──
     all_ok = (
-        result["gemini"]["ok"]
+        result["groq"]["ok"]
         and result["supabase"]["ok"]
         and result["profile"]["found"]
     )
     if all_ok and result["supabase"]["jobs_total"] > 0:
-        result["verdict"] = f"✅ Pipeline healthy — {result['supabase']['jobs_total']} total jobs, {result['supabase']['jobs_15d']} in last 15 days"
+        result["verdict"] = f"✅ Pipeline healthy — Groq ({result['groq']['latency_ms']}ms), {result['supabase']['jobs_total']} total jobs, {result['supabase']['jobs_15d']} in last 15 days"
     elif all_ok and result["supabase"]["jobs_total"] == 0:
-        result["verdict"] = "⚠️ Pipeline OK but no jobs in DB yet — trigger a scrape first"
-    elif not result["gemini"]["ok"]:
-        result["verdict"] = f"❌ Gemini API broken — fix GEMINI_MODEL or GEMINI_API_KEY. Error: {result['gemini']['error']}"
+        result["verdict"] = f"⚠️ Pipeline OK (Groq {result['groq']['latency_ms']}ms) but no jobs in DB yet — trigger a scrape first"
+    elif not result["groq"]["ok"]:
+        result["verdict"] = f"❌ Groq AI broken — fix GROQ_MODEL or GROQ_API_KEY. Error: {result['groq']['error']}"
     elif not result["supabase"]["ok"]:
         result["verdict"] = f"❌ Supabase broken — check SUPABASE_URL / SUPABASE_SERVICE_KEY"
     elif not result["profile"]["found"]:
         result["verdict"] = "❌ No profile found — visit dashboard and save your profile first"
 
     return JSONResponse(content=result)
+
+
+# ══════════════════════════════════════════════════════════════
+#  AI JOB INTELLIGENCE & REALITY CHECK APIs
+# ══════════════════════════════════════════════════════════════
+
+@app.post("/api/intelligence/run")
+async def run_job_intelligence():
+    """Run full AI Job Intelligence & Reality Check pipeline on active jobs."""
+    try:
+        from app.intelligence.service import JobIntelligenceService
+        settings = get_settings()
+
+        profile = db.get_profile_by_email(settings.user_email)
+        if not profile:
+            profile = db.get_first_active_profile()
+        if not profile:
+            return JSONResponse(content={"error": "Please set up your profile first."}, status_code=400)
+
+        # Get active recent jobs (strictly exclude expired)
+        all_jobs = db.get_jobs_last_n_days(days=15)
+        today = date.today()
+        active_jobs = [j for j in all_jobs if not (j.last_date and j.last_date < today)]
+
+        if not active_jobs:
+            # If no active in last 15 days, try all available jobs in DB that are not expired
+            all_db_jobs = db.get_all_pending_digest_jobs() or []
+            active_jobs = [j for j in all_db_jobs if not (j.last_date and j.last_date < today)]
+
+        if not active_jobs:
+            return JSONResponse(content={
+                "status": "empty",
+                "message": "No active upcoming job postings found. Try running a fresh scrape first.",
+                "jobs": [],
+                "count": 0
+            })
+
+        service = JobIntelligenceService()
+        results = service.run_intelligence_pipeline(
+            jobs=active_jobs,
+            profile=profile,
+            limit=settings.job_reality_research_limit,
+            exclude_expired=True,
+            force_refresh=True
+        )
+
+        import json
+        return JSONResponse(content={
+            "status": "success",
+            "count": len(results),
+            "jobs": [json.loads(r.model_dump_json()) for r in results]
+        })
+
+    except Exception as e:
+        logger.error(f"Intelligence pipeline run failed: {e}", exc_info=True)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/intelligence/jobs")
+async def get_intelligence_jobs():
+    """Get analyzed jobs with intelligence scores and recommendations."""
+    try:
+        import json
+        from app.intelligence.service import JobIntelligenceService
+        settings = get_settings()
+
+        profile = db.get_profile_by_email(settings.user_email)
+        if not profile:
+            profile = db.get_first_active_profile()
+        if not profile:
+            return JSONResponse(content={"jobs": [], "count": 0})
+
+        service = JobIntelligenceService()
+        if not service._cache:
+            all_jobs = db.get_jobs_last_n_days(days=15)
+            today = date.today()
+            active_jobs = [j for j in all_jobs if not (j.last_date and j.last_date < today)]
+            if active_jobs:
+                service.run_intelligence_pipeline(active_jobs, profile, limit=settings.job_reality_research_limit)
+
+        results = list(service._cache.values())
+        today = date.today()
+        active_results = [r for r in results if not (r.last_date and r.last_date < today)]
+        active_results.sort(key=lambda r: (r.match.match_score, r.reality.reality_score), reverse=True)
+
+        return JSONResponse(content={
+            "status": "ok",
+            "count": len(active_results),
+            "jobs": [json.loads(r.model_dump_json()) for r in active_results]
+        })
+
+    except Exception as e:
+        logger.error(f"Failed to fetch intelligence jobs: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/intelligence/job/{job_id}")
+async def get_job_intelligence_detail(job_id: str):
+    """Get complete deep intelligence analysis for a single job."""
+    try:
+        import json
+        from app.intelligence.service import JobIntelligenceService
+        service = JobIntelligenceService()
+        result = service.get_cached_job(job_id)
+        if result:
+            return JSONResponse(content=json.loads(result.model_dump_json()))
+        return JSONResponse(content={"error": "Job intelligence not found in cache. Run analysis first."}, status_code=404)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/api/intelligence/job/{job_id}/refresh")
+async def refresh_job_reality(job_id: str):
+    """Re-run fresh reality check research on a specific job."""
+    try:
+        import json
+        from app.intelligence.service import JobIntelligenceService
+        service = JobIntelligenceService()
+        cached = service.get_cached_job(job_id)
+        if not cached:
+            return JSONResponse(content={"error": "Job not found in cache."}, status_code=404)
+
+        settings = get_settings()
+        profile = db.get_profile_by_email(settings.user_email) or db.get_first_active_profile()
+
+        # Re-run research
+        service.researcher.api_key = settings.get_reality_key()
+        new_reality = service.researcher.research(cached.structured_info)
+        cached.reality = new_reality
+        cached.updated_at = datetime.utcnow()
+
+        return JSONResponse(content={
+            "status": "refreshed",
+            "job": json.loads(cached.model_dump_json())
+        })
+    except Exception as e:
+        logger.error(f"Failed to refresh reality check: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/intelligence/config")
+async def get_intelligence_config():
+    """Retrieve masked AI Provider credentials status."""
+    settings = get_settings()
+
+    def mask_key(k: str) -> str:
+        if not k:
+            return "Not Configured"
+        if len(k) <= 8:
+            return "****"
+        return f"{k[:8]}...{k[-4:]}"
+
+    return {
+        "job_intelligence_key": mask_key(settings.get_intelligence_key()),
+        "job_reality_key": mask_key(settings.get_reality_key()),
+        "research_limit": settings.job_reality_research_limit,
+        "primary_model": settings.groq_model,
+        "status": "ready"
+    }
+
+
+@app.get("/api/intelligence/download-pdf")
+async def download_intelligence_pdf():
+    """Generate and download specialized AI Job Intelligence & Reality Check PDF."""
+    try:
+        from app.intelligence.service import JobIntelligenceService
+        from app.pdf_generator import PDFGenerator
+        from fastapi.responses import Response
+
+        settings = get_settings()
+        profile = db.get_profile_by_email(settings.user_email) or db.get_first_active_profile()
+        service = JobIntelligenceService()
+
+        # Ensure we have intelligence items
+        if not service._cache:
+            all_jobs = db.get_jobs_last_n_days(days=15)
+            today = date.today()
+            active_jobs = [j for j in all_jobs if not (j.last_date and j.last_date < today)]
+            if active_jobs and profile:
+                service.run_intelligence_pipeline(active_jobs, profile, limit=settings.job_reality_research_limit)
+
+        items = list(service._cache.values())
+        today = date.today()
+        active_items = [i for i in items if not (i.last_date and i.last_date < today)]
+
+        pdf_gen = PDFGenerator()
+        pdf_bytes = pdf_gen.generate_intelligence_report(active_items, digest_date=today)
+
+        filename = f"JobScout_Reality_Report_{today.strftime('%Y%m%d')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"Download intelligence PDF failed: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
